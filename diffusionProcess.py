@@ -5,6 +5,8 @@ from scipy.optimize import minimize_scalar, fsolve
 from scipy.integrate import quad, nquad, dblquad
 from functools import partial
 from collections.abc import Iterable
+import math
+from mpmath import hyp2f2
 
 # Define the drift function and diffusion coefficient
 def b(x: float, t: float) -> float:
@@ -76,7 +78,7 @@ def get_y1_and_zeta(g):
     f = lambda y: y if reward(y) > 0 else np.inf
     result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
     y1 = round(result.x, 5)
-    f = lambda y: -y if reward(y) > 0 else np.inf
+    f = lambda y: -reward(y) if reward(y) > 0 else np.inf
     result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
     zeta = round(result.x, 5)
 
@@ -110,26 +112,44 @@ def xi(x, b, sigma):
     f = lambda y: 1/(sigma(y,0)**2 * invariant_density(y, b, sigma)) * inner_integral(y, b, sigma)
     return 2*quad(f, 0, x)[0]
 
+def erfi(x, N):
+    f = lambda n: x**(2*n+1)/(math.factorial(n)*(2*n+1))
+    return 2/np.sqrt(np.pi) * sum(map(f, range(N)))
 
-    
+def xi_teoretial(x):
+    return float(x**2 * hyp2f2(1,1,3/2, 2, x**2/2) + np.pi * erfi(x/np.sqrt(2), 10))
 
 if __name__ == "__main__":
     # x, t = EulerMaruymaMethod(b, sigma, 100, 0.01, 0)
-
     # # Plot the simulated values
     # plt.plot(t, x)
     # plt.xlabel('Time')
     # plt.ylabel('Value')
     # plt.show()
-    f = lambda y: reward(y)/xi(y, b, sigma)
+    f = lambda y: -reward(y)/xi_teoretial(y)
+
     y1, zeta = get_y1_and_zeta(reward)
-    print(y1, zeta)
-    print(xi(y1, b, sigma))
-    y = np.linspace(y1, zeta, 20)
-    vals = list(map(f,y))
+    y = np.linspace(y1+0.00001, zeta, 20)
+    gs = list(map(reward, y))
+    # xif = lambda y: xi(y, b, sigma)
+    # xis = list(map(xif, y))
+    xis_theo = list(map(xi_teoretial, y))
+    print(gs)
+    print(xis_theo)
+    # plt.plot(y, xis, label="Calculated")
+    # plt.show()
+    # plt.plot(y, xis_theo, label="Theoretical")
+    # plt.legend()
+    # plt.show()
+
+    vals = [g/z for g, z in zip(gs,xis_theo)]
+    result = minimize_scalar(f, bounds=(y1, zeta), method="bounded", options={'xatol': 1e-8})
+    y_star = result.x
+    print(f"Optimal stopping time y: {y_star}")
+    print(f"Optimal reward per expected time unit: {-f(y_star)}")
+    plt.plot(y, gs)
+    plt.show()
+    plt.plot(y, xis_theo)
+    plt.show()
     plt.plot(y, vals)
     plt.show()
-    # result = minimize_scalar(f, bounds=(y1, zeta), method="bounded", options={'xatol': 1e-8})
-    # y_star = result.x
-    # print(y_star)
-    # print(f(y_star))
