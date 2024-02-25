@@ -24,10 +24,10 @@ def get_y1_and_zeta(g):
     roots = fsolve(g, [0, 10000])
     f = lambda y: y if reward(y) > 0 else np.inf
     result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
-    y1 = round(result.x, 5)
+    y1 = result.x
     f = lambda y: -reward(y) if reward(y) > 0 else np.inf
     result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
-    zeta = round(result.x, 5)
+    zeta = result.x
 
     return y1, zeta
 
@@ -149,31 +149,41 @@ if __name__ == "__main__":
     # plt.xlabel('Time')
     # plt.ylabel('Value')
     # plt.show()
-    difPros = DiffusionProcess(b, sigma)
-    optStrat = OptimalStrategy(difPros, reward)
-    print(f"optimal threshold: {optStrat.y_star}")
-    T = 10
-    dt = 0.01
-    t = [0]
-    X_strat = [0]
-    x_plot = []
-    t_plot = []
-    i = 0
-    while t[i] < T:
-        if optStrat.take_decision(x=X_strat[i]):
-            t_plot.append(t)
-            x_plot.append(X_strat)
-            t = [t[i]]
-            X_strat = [0]
-            i = 0
 
-        t.append(t[i] + dt)
-        X_strat.append(difPros.step(X_strat[i], t[i], dt))
-        i += 1
+    y1, zeta = get_y1_and_zeta(reward)
 
-    total_reward = optStrat.reward
-    print(f"Total reward was: {total_reward}")
-    for t, x in zip(t_plot, x_plot):
-        plt.plot(t,x, color="b")
+    print(y1)
+    print(1/3*(4-np.sqrt(10)))
+    print(reward(y1))
+    print(zeta)
+    print(reward(zeta))
+
+
+    # difPros = DiffusionProcess(b, sigma)
+    # optStrat = OptimalStrategy(difPros, reward)
+    # print(f"optimal threshold: {optStrat.y_star}")
+    # T = 10
+    # dt = 0.01
+    # t = [0]
+    # X_strat = [0]
+    # x_plot = []
+    # t_plot = []
+    # i = 0
+    # while t[i] < T:
+    #     if optStrat.take_decision(x=X_strat[i]):
+    #         t_plot.append(t)
+    #         x_plot.append(X_strat)
+    #         t = [t[i]]
+    #         X_strat = [0]
+    #         i = 0
+
+    #     t.append(t[i] + dt)
+    #     X_strat.append(difPros.step(X_strat[i], t[i], dt))
+    #     i += 1
+
+    # total_reward = optStrat.reward
+    # print(f"Total reward was: {total_reward}")
+    # for t, x in zip(t_plot, x_plot):
+    #     plt.plot(t,x, color="b")
         
-    plt.show()
+    # plt.show()
