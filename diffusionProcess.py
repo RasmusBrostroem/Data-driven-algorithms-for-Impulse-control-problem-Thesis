@@ -18,6 +18,7 @@ def sigma(x: float, t: float) -> float:
     return 1
 
 def reward(x):
+    # return 1 - np.abs(1-x)**2
     return 10 - np.abs(4-3*x)**2
 
 def get_y1_and_zeta(g):
@@ -108,9 +109,13 @@ class DiffusionProcess():
 
     def xi(self, x):
         def inner_integral(y):
+            if isinstance(y, Iterable):
+                return np.array(list(map(partial(quad, self.invariant_density, -np.inf), y)))[:, 0]
             return quad(self.invariant_density, -np.inf, y)[0]
         
         f = lambda y: 1/(self.sigma(y,0)**2 * self.invariant_density(y)) * inner_integral(y)
+        if isinstance(x, Iterable):
+            return 2*np.array(list(map(partial(quad, f, 0), x)))[:, 0]
         return 2*quad(f, 0, x)[0]
 
     def erfi(self, x, N):
@@ -118,7 +123,10 @@ class DiffusionProcess():
         return 2/np.sqrt(np.pi) * sum(map(f, range(N)))
 
     def xi_theoretical(self, x):
-        return float(x**2 * hyp2f2(1,1,3/2, 2, x**2/2) + np.pi * self.erfi(x/np.sqrt(2), 10))
+        f = lambda x: float(x**2 * hyp2f2(1,1,3/2, 2, x**2/2) + np.pi * self.erfi(x/np.sqrt(2), 10))
+        if isinstance(x, Iterable):
+            return list(map(f, x))
+        return f(x)
 
 class OptimalStrategy():
     def __init__(self, diffusionProcess, rewardFunc):
@@ -130,6 +138,7 @@ class OptimalStrategy():
 
     def get_optimal_threshold(self):
         obj = lambda y: -self.g(y)/self.difPros.xi_theoretical(y)
+        # obj = lambda y: -self.g(y)/self.difPros.xi(y)
         result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-8})
         return result.x
     
@@ -140,50 +149,77 @@ class OptimalStrategy():
         
         return False
 
+def simulate_optimal_strategy(T=10, dt=0.01):
+    difPros = DiffusionProcess(b, sigma)
+    optStrat = OptimalStrategy(difPros, reward)
+    print(f"Optimal threshold: {optStrat.y_star}")
+    t = [0]
+    X_strat = [0]
+    x_plot = []
+    t_plot = []
+    i = 0
+    while t[i] < T:
+        if optStrat.take_decision(x=X_strat[i]):
+            t_plot.append(t)
+            x_plot.append(X_strat)
+            t = [t[i]]
+            X_strat = [0]
+            i = 0
 
+        t.append(t[i] + dt)
+        X_strat.append(difPros.step(X_strat[i], t[i], dt))
+        i += 1
+
+    total_reward = optStrat.reward
+    print(f"Total reward was: {total_reward}")
+    for t, x in zip(t_plot, x_plot):
+        plt.plot(t,x, color="b")
+        
+    plt.show()
+    return
+
+def plot_uncontrolled_diffusion(T=100, dt=0.01, x0=0):
+    difPros = DiffusionProcess(b, sigma)
+    x, t = difPros.EulerMaruymaMethod(T, dt, x0)
+    plt.plot(t, x)
+    plt.xlabel('Time')
+    plt.ylabel('Value')
+    plt.show()
+    return
+
+def plot_reward_xi_obj():
+    difPros = DiffusionProcess(b, sigma)
+    optStrat = OptimalStrategy(difPros, reward)
+    y1, zeta = get_y1_and_zeta(g=reward)
+    print(f"y1 = {y1} and zeta = {zeta}")
+
+    y = np.linspace(y1, zeta*2, 20)
+    gs = reward(y)
+
+    plt.plot(y, gs)
+    plt.title("Reward function")
+    plt.show()
+
+    xis = difPros.xi(y)
+    xis_theo = difPros.xi_theoretical(y)
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    fig.suptitle("Expected time before reaching value")
+    ax1.plot(y,xis)
+    ax1.set_title("Calculated xi")
+    ax2.plot(y,xis_theo)
+    ax2.set_title("Theoretical xi")
+    plt.show()
+
+    vals = gs/xis
+    print(f"Optimal threshold = {optStrat.get_optimal_threshold()}")
+    plt.plot(y, vals)
+    plt.title("Objective function")
+    plt.show()
+    return
 
 if __name__ == "__main__":
-    # x, t = EulerMaruymaMethod(b, sigma, 100, 0.01, 0)
-    # # Plot the simulated values
-    # plt.plot(t, x)
-    # plt.xlabel('Time')
-    # plt.ylabel('Value')
-    # plt.show()
+    plot_uncontrolled_diffusion()
 
-    y1, zeta = get_y1_and_zeta(reward)
+    # simulate_optimal_strategy()
 
-    print(y1)
-    print(1/3*(4-np.sqrt(10)))
-    print(reward(y1))
-    print(zeta)
-    print(reward(zeta))
-
-
-    # difPros = DiffusionProcess(b, sigma)
-    # optStrat = OptimalStrategy(difPros, reward)
-    # print(f"optimal threshold: {optStrat.y_star}")
-    # T = 10
-    # dt = 0.01
-    # t = [0]
-    # X_strat = [0]
-    # x_plot = []
-    # t_plot = []
-    # i = 0
-    # while t[i] < T:
-    #     if optStrat.take_decision(x=X_strat[i]):
-    #         t_plot.append(t)
-    #         x_plot.append(X_strat)
-    #         t = [t[i]]
-    #         X_strat = [0]
-    #         i = 0
-
-    #     t.append(t[i] + dt)
-    #     X_strat.append(difPros.step(X_strat[i], t[i], dt))
-    #     i += 1
-
-    # total_reward = optStrat.reward
-    # print(f"Total reward was: {total_reward}")
-    # for t, x in zip(t_plot, x_plot):
-    #     plt.plot(t,x, color="b")
-        
-    # plt.show()
+    # plot_reward_xi_obj()
