@@ -18,8 +18,8 @@ def sigma(x: float, t: float) -> float:
     return 1
 
 def reward(x):
-    # return 1 - np.abs(1-x)**2
-    return 10 - np.abs(4-3*x)**2
+    return 1/2 - np.abs(1-x)**2
+    # return 10 - np.abs(4-3*x)**2
 
 def get_y1_and_zeta(g):
     roots = fsolve(g, [0, 10000])
@@ -137,8 +137,8 @@ class OptimalStrategy():
         self.reward = 0
 
     def get_optimal_threshold(self):
+        #obj = lambda y: -self.g(y)/self.difPros.xi_theoretical(y)
         obj = lambda y: -self.g(y)/self.difPros.xi_theoretical(y)
-        # obj = lambda y: -self.g(y)/self.difPros.xi(y)
         result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-8})
         return result.x
     
@@ -196,12 +196,17 @@ def plot_reward_xi_obj():
     y = np.linspace(y1, zeta*2, 20)
     gs = reward(y)
 
+    xis = difPros.xi(y)
+    xis_theo = difPros.xi_theoretical(y)
+
+    vals = gs/xis
+
+    y_star = optStrat.get_optimal_threshold()
+
     plt.plot(y, gs)
     plt.title("Reward function")
     plt.show()
 
-    xis = difPros.xi(y)
-    xis_theo = difPros.xi_theoretical(y)
     fig, (ax1, ax2) = plt.subplots(1,2)
     fig.suptitle("Expected time before reaching value")
     ax1.plot(y,xis)
@@ -210,8 +215,7 @@ def plot_reward_xi_obj():
     ax2.set_title("Theoretical xi")
     plt.show()
 
-    vals = gs/xis
-    print(f"Optimal threshold = {optStrat.get_optimal_threshold()}")
+    print(f"Optimal threshold = {y_star}")
     plt.plot(y, vals)
     plt.title("Objective function")
     plt.show()
