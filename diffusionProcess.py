@@ -222,8 +222,8 @@ def plot_reward_xi_obj():
     return
 
 if __name__ == "__main__":
-    plot_uncontrolled_diffusion()
+    # plot_uncontrolled_diffusion()
 
-    # simulate_optimal_strategy()
+    simulate_optimal_strategy()
 
     # plot_reward_xi_obj()
