@@ -19,6 +19,7 @@ class DiffusionProcess():
     def __init__(self, b, sigma) -> None:
         self.b = b
         self.sigma = sigma
+        self.C_b_sigma_val = self.getC_b_sigma()
 
 
     def EulerMaruymaMethod(self,
@@ -87,8 +88,7 @@ class DiffusionProcess():
                 return np.array(list(map(partial(quad, f, 0), x)))[:, 0]
             return quad(f, 0, x)[0]
 
-        C_b_sigma = self.getC_b_sigma()
-        return 1/C_b_sigma * np.exp(integral(x))
+        return 1/self.C_b_sigma_val * np.exp(integral(x))
 
     def xi(self, x):
         def inner_integral(y):

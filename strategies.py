@@ -8,6 +8,8 @@ from collections.abc import Iterable
 import math
 from mpmath import hyp2f2
 
+import cProfile
+
 def reward(x):
     return 1/2 - np.abs(1-x)**2
     # return 10 - np.abs(4-3*x)**2
@@ -33,8 +35,8 @@ class OptimalStrategy():
         self.reward = 0
 
     def get_optimal_threshold(self):
-        #obj = lambda y: -self.g(y)/self.difPros.xi(y)
-        obj = lambda y: -self.g(y)/self.difPros.xi_theoretical(y)
+        obj = lambda y: -self.g(y)/self.difPros.xi(y)
+        #obj = lambda y: -self.g(y)/self.difPros.xi_theoretical(y)
         result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-8})
         return result.x
     
