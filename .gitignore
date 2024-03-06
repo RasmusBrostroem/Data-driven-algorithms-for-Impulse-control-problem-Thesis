@@ -153,4 +153,4 @@ cython_debug/
 
 
 # Test script
-test.py
+#test.py
