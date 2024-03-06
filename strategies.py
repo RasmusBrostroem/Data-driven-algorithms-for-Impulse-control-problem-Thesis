@@ -7,6 +7,10 @@ from functools import partial
 from collections.abc import Iterable
 import math
 from mpmath import hyp2f2
+from sklearn.neighbors import KernelDensity
+from sklearn.model_selection import GridSearchCV
+from scipy.stats import ecdf
+from collections.abc import Iterable
 
 import cProfile
 
@@ -48,20 +52,89 @@ class OptimalStrategy():
         return False
     
 class DataDrivenImpulseControl():
-    def __init__(self, diffusionProcess, rewardFunc):
-        self.difPros = diffusionProcess
+    def __init__(self, rewardFunc, **kwargs):
         self.g = rewardFunc
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
+
+        # Kernel attributes
+        self.kernel_method = "gaussian"
+        self.bandwidth = None
+        self.bandwidth_start = 0.01
+        self.bandwidth_end = 1
+        self.bandwidth_increment = 0.02
+
+        # bounds on xi and invariant density
+        self.a = 0.01
+        self.M1 = 0.01
+
+        self.update_attributes_on_kwargs(**kwargs)
+
+        self.kde = None
+        self.cdf = None
+
+    def update_attributes_on_kwargs(self, **kwargs):
+        # Get a list of all predefined attributes
+        allowed_keys = list(self.__dict__.keys())
+
+        # Update attributes
+        self.__dict__.update((key, value) for key, value in kwargs.items() 
+                             if key in allowed_keys)
+        
+        # Raise error for attributes given, that does not exist
+        # To NOT silently ignore rejected keys
+        rejected_keys = set(kwargs.keys()) - set(allowed_keys)
+        if rejected_keys:
+            raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
     
-    def kernel(self, x: float) -> float:
-        """A kernel function that 
+    def kernel_fit(self, data: list[float]) -> None:
+        data = data[:, None]
 
-        Args:
-            x (float): _description_
+        if not self.bandwidth:
+            bandwidth = np.arange(self.bandwidth_start, self.bandwidth_end, self.bandwidth_increment)
+            tmp_kde = KernelDensity(kernel=self.kernel_method)
+            grid = GridSearchCV(tmp_kde, {'bandwidth': bandwidth})
+            grid.fit(data)
+            self.kde = grid.best_estimator_
+            return
+        
+        self.kde = KernelDensity(kernel=self.kernel_method, bandwidth=self.bandwidth)
+        self.kde.fit(data)
 
-        Returns:
-            float: _description_
-        """
+    def ecdf_fit(self, data: list[float]) -> None:
+        res = ecdf(sample=data)
+        self.cdf = res.cdf
+
+    def fit(self, data: list[float]) -> None:
+        self.kernel_fit(data)
+        self.ecdf_fit(data)
+    
+    def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
+        return self.cdf.evaluate(x)
+
+    def pdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
+        if isinstance(x, Iterable):
+            data = x[:, None]
+        else:
+            data = [[x]]
+        
+        logprob = self.kde.score_samples(data)
+        return np.exp(logprob) if isinstance(x, Iterable) else np.exp(logprob)[0]
+    
+    def xi_eval(self, x):
+        f = lambda y: self.cdf_eval(y)/max(self.pdf_eval(y), self.a)
+
+        if isinstance(x, Iterable):
+            xi_estimate = 2*np.array(list(map(partial(quad, f, 0, limit=150, epsrel=1e-3), x)))[:, 0]
+        else:
+            xi_estimate = 2*quad(f, 0, x, limit=150, epsrel=1e-3)[0]
+
+        return np.maximum(xi_estimate, self.M1)
+    
+    def estimate_threshold(self) -> float:
+        obj = lambda y: -self.g(y)/self.xi_eval(y)
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-8})
+        return result.x
+
 
 if __name__ == "__main__":
     pass
