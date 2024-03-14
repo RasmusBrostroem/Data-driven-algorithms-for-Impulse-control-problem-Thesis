@@ -13,31 +13,55 @@ from statsmodels.nonparametric.kde import KDEUnivariate
 from scipy.stats import gaussian_kde
 
 difPros = DiffusionProcess(b, sigma)
-dataStrat = DataDrivenImpulseControl(rewardFunc=reward, bandwidth=1/np.sqrt(100))
 optStrat = OptimalStrategy(diffusionProcess=difPros, rewardFunc=reward)
 
-x, t = difPros.EulerMaruymaMethod(1000, 0.01, 0)
-y1, zeta = get_y1_and_zeta(reward)
-vals = np.linspace(y1, zeta*2, 20)
+Ts = [10*i for i in range(1,11)]
+sims = 10
+STs = []
+regrets = []
+for T in Ts:
+    print(T)
+    regret = 0
+    STsims = 0
+    for i in range(sims):
+        print(i)
+        dataStrat = DataDrivenImpulseControl(rewardFunc=reward, bandwidth=1/np.sqrt(T))
+        cumReward, S_T = dataStrat.simulate(diffpros=difPros, T=T, dt=0.01)
+        optReward = optStrat.simulate(diffpros=difPros, T=T, dt=0.01)
+        STsims += S_T
+        regret += optReward-cumReward
+    
+    regrets.append(regret/sims)
+    STs.append(STsims/sims)
 
-dataStrat.fit(x)
-
-y_star = optStrat.get_optimal_threshold()
-y_hat = dataStrat.estimate_threshold()
-
-xis = dataStrat.xi_eval(vals)
-xis_theo = difPros.xi_theoretical(vals)
-
-fig, (ax1, ax2) = plt.subplots(1,2, sharey=True)
-ax1.plot(vals, xis)
-ax1.set_title("Estimated expected hitting times")
-ax2.plot(vals, xis_theo)
-ax2.set_title("Theoretical expected hitting times")
-fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.plot(Ts, regrets)
 plt.show()
+plt.plot(Ts, STs)
+plt.show()
+# x, t = difPros.EulerMaruymaMethod(100, 0.01, 0)
+# x = list(x)
+# y1, zeta = get_y1_and_zeta(reward)
+# vals = np.linspace(y1, zeta*2, 20)
 
-print(f"Optimal threshold = {y_star}")
-print(f"Estimated threshold = {y_hat}")
+# dataStrat.fit(x)
+
+# y_star = optStrat.get_optimal_threshold()
+# y_hat = dataStrat.estimate_threshold()
+
+# xis = dataStrat.xi_eval(vals)
+# xis_theo = difPros.xi_theoretical(vals)
+
+# fig, (ax1, ax2) = plt.subplots(1,2, sharey=True)
+# ax1.plot(vals, xis)
+# ax1.set_title("Estimated expected hitting times")
+# ax2.plot(vals, xis_theo)
+# ax2.set_title("Theoretical expected hitting times")
+# fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+# plt.show()
+
+
+# print(f"Optimal threshold = {y_star}")
+# print(f"Estimated threshold = {y_hat}")
 
 
 # start_sklearn = time()
