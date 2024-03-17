@@ -11,6 +11,7 @@ from sklearn.neighbors import KernelDensity
 from sklearn.model_selection import GridSearchCV
 from scipy.stats import ecdf
 from collections.abc import Iterable
+from functools import lru_cache
 
 from diffusionProcess import DiffusionProcess
 
@@ -120,32 +121,37 @@ class DataDrivenImpulseControl():
     def fit(self, data: list[float]) -> None:
         self.kernel_fit(data)
         self.ecdf_fit(data)
+        #self.xi_eval.cache_clear()
     
     def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
         return self.cdf.evaluate(x)
 
     def pdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
-        if isinstance(x, Iterable):
-            data = x[:, None]
-        else:
-            data = [[x]]
+        # if isinstance(x, Iterable):
+        #     data = x[:, None]
+        # else:
+        #     data = [[x]]
+        data = [[x]]
         
         logprob = self.kde.score_samples(data)
-        return np.exp(logprob) if isinstance(x, Iterable) else np.exp(logprob)[0]
+        return np.exp(logprob)[0]
     
     def xi_eval(self, x):
         f = lambda y: self.cdf_eval(y)/max(self.pdf_eval(y), self.a)
 
-        if isinstance(x, Iterable):
-            xi_estimate = 2*np.array(list(map(partial(quad, f, 0, limit=150, epsrel=1e-3), x)))[:, 0]
-        else:
-            xi_estimate = 2*quad(f, 0, x, limit=150, epsabs=1e-3)[0]
+        # if isinstance(x, Iterable):
+        #     #xi_estimate = 2*np.array(list(map(partial(quad, f, 0, limit=150, epsabs=1e-3), x)))[:, 0]
+        #     xi_estimate = 2 * np.array([quad(f, 0, xi, limit=150, epsabs=1e-3)[0] for xi in x])
+        # else:
+        #     xi_estimate = 2*quad(f, 0, x, limit=150, epsabs=1e-3)[0]
+
+        xi_estimate = 2*quad(f, 0, x, limit=150, epsabs=1e-3)[0]
 
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-8})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
         return result.x
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
