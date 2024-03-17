@@ -14,30 +14,16 @@ from scipy.stats import gaussian_kde
 
 difPros = DiffusionProcess(b, sigma)
 optStrat = OptimalStrategy(diffusionProcess=difPros, rewardFunc=reward)
+x, t = difPros.EulerMaruymaMethod(100, 0.01, 0)
 
-Ts = [10*i for i in range(1,11)]
-sims = 10
-STs = []
-regrets = []
-for T in Ts:
-    print(T)
-    regret = 0
-    STsims = 0
-    for i in range(sims):
-        print(i)
-        dataStrat = DataDrivenImpulseControl(rewardFunc=reward, bandwidth=1/np.sqrt(T))
-        cumReward, S_T = dataStrat.simulate(diffpros=difPros, T=T, dt=0.01)
-        optReward = optStrat.simulate(diffpros=difPros, T=T, dt=0.01)
-        STsims += S_T
-        regret += optReward-cumReward
-    
-    regrets.append(regret/sims)
-    STs.append(STsims/sims)
+T=100
+dataStrat = DataDrivenImpulseControl(rewardFunc=reward, bandwidth=1/np.sqrt(T))
+dataStrat.fit(x)
+cProfile.run("dataStrat.estimate_threshold()")
+#optStrat.simulate(diffpros=difPros, T=T, dt=0.01)
 
-plt.plot(Ts, regrets)
-plt.show()
-plt.plot(Ts, STs)
-plt.show()
+
+
 # x, t = difPros.EulerMaruymaMethod(100, 0.01, 0)
 # x = list(x)
 # y1, zeta = get_y1_and_zeta(reward)
