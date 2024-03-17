@@ -20,6 +20,11 @@ class DiffusionProcess():
         self.b = b
         self.sigma = sigma
         self.C_b_sigma_val = self.getC_b_sigma()
+        self.noise = None
+
+    def generate_noise(self, T, dt) -> None:
+        self.noise = np.random.normal(loc=0.0, scale=np.sqrt(dt), size=T/dt)
+        return
 
 
     def EulerMaruymaMethod(self,
@@ -70,6 +75,9 @@ class DiffusionProcess():
         Returns:
             float: _description_
         """
+        if self.noise:
+            return x + self.b(x, t)*dt + self.sigma(x, t)*self.noise[t/dt]
+        
         return x + self.b(x, t)*dt + self.sigma(x, t)*np.random.normal(loc=0.0, scale=np.sqrt(dt))
 
 
