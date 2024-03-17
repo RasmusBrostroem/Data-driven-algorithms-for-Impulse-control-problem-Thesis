@@ -6,6 +6,7 @@ import numpy as np
 from collections.abc import Iterable
 from functools import partial
 import cProfile
+import pstats
 import matplotlib.pyplot as plt
 
 from sklearn.neighbors import KernelDensity
@@ -14,12 +15,62 @@ from scipy.stats import gaussian_kde
 
 difPros = DiffusionProcess(b, sigma)
 optStrat = OptimalStrategy(diffusionProcess=difPros, rewardFunc=reward)
+
 x, t = difPros.EulerMaruymaMethod(100, 0.01, 0)
 
 T=100
 dataStrat = DataDrivenImpulseControl(rewardFunc=reward, bandwidth=1/np.sqrt(T))
+y1, zeta = get_y1_and_zeta(reward)
+
+
 dataStrat.fit(x)
-cProfile.run("dataStrat.estimate_threshold()")
+
+print(dataStrat.estimate_threshold())
+cProfile.run("dataStrat.estimate_threshold()", "threshold_stats")
+p = pstats.Stats("threshold_stats")
+p.sort_stats("cumulative").print_stats()
+
+
+# vals = np.linspace(y1, zeta, 20000)
+
+# sklearn = KernelDensity(kernel="gaussian", bandwidth=1/np.sqrt(T))
+# stats = KDEUnivariate(list(x))
+
+# start = time()
+# stats.fit(kernel="gau", bw=1/np.sqrt(T))
+# end = time()
+# print(f"Statsmodel fit time: {end-start}")
+
+# xs = np.array(x)[:, None]
+# start = time()
+# sklearn.fit(xs)
+# end = time()
+# print(f"sklearn fit time: {end-start}")
+
+# statsEval = np.zeros(len(vals))
+# start = time()
+# for i, v in enumerate(vals):
+#     statsEval[i] = stats.evaluate(v)[0]
+# end = time()
+# print(f"Statsmodel evaluation time: {end-start}")
+
+# skpdfs = np.zeros(len(vals))
+# start = time()
+# for i, v in enumerate(vals):
+#     skEval = sklearn.score_samples([[v]])
+#     skpdfs[i] = np.exp(skEval)[0]
+# end = time()
+# print(f"sklearn evaluation time: {end-start}")
+
+# fig, (ax1, ax2) = plt.subplots(1,2, sharey=True)
+# ax1.plot(vals, statsEval)
+# ax1.set_title("Statsmodel")
+# ax2.plot(vals, skpdfs)
+# ax2.set_title("Sklearn")
+# fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+# plt.show()
+
+
 #optStrat.simulate(diffpros=difPros, T=T, dt=0.01)
 
 

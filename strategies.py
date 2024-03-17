@@ -9,13 +9,16 @@ import math
 from mpmath import hyp2f2
 from sklearn.neighbors import KernelDensity
 from sklearn.model_selection import GridSearchCV
+from statsmodels.nonparametric.kde import KDEUnivariate
 from scipy.stats import ecdf
 from collections.abc import Iterable
+
 from functools import lru_cache
+
+import numba as nb
 
 from diffusionProcess import DiffusionProcess
 
-import cProfile
 
 def reward(x):
     return 1/2 - np.abs(1-x)**2
@@ -71,15 +74,15 @@ class DataDrivenImpulseControl():
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
 
         # Kernel attributes
-        self.kernel_method = "gaussian"
+        self.kernel_method = "gau"
         self.bandwidth = None
         self.bandwidth_start = 0.01
         self.bandwidth_end = 1
         self.bandwidth_increment = 0.02
 
         # bounds on xi and invariant density
-        self.a = 0.01
-        self.M1 = 0.01
+        self.a = 0.000001
+        self.M1 = 0.000001
 
         self.update_attributes_on_kwargs(**kwargs)
 
@@ -114,14 +117,17 @@ class DataDrivenImpulseControl():
         self.kde = KernelDensity(kernel=self.kernel_method, bandwidth=self.bandwidth)
         self.kde.fit(data)
 
+    def kernel_fit_stats(self, data: list[float]) -> None:
+        self.kde = KDEUnivariate(data)
+        self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth)
+
     def ecdf_fit(self, data: list[float]) -> None:
         res = ecdf(sample=data)
         self.cdf = res.cdf
 
     def fit(self, data: list[float]) -> None:
-        self.kernel_fit(data)
+        self.kernel_fit_stats(data)
         self.ecdf_fit(data)
-        #self.xi_eval.cache_clear()
     
     def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
         return self.cdf.evaluate(x)
@@ -136,16 +142,18 @@ class DataDrivenImpulseControl():
         logprob = self.kde.score_samples(data)
         return np.exp(logprob)[0]
     
-    def xi_eval(self, x):
-        f = lambda y: self.cdf_eval(y)/max(self.pdf_eval(y), self.a)
+    def pdf_eval_stats(self, x: float) -> float:
+        return self.kde.evaluate(x)[0]
 
+    def xi_eval(self, x):
+        f = lambda y: self.cdf_eval(y)/max(self.pdf_eval_stats(y), self.a)
         # if isinstance(x, Iterable):
         #     #xi_estimate = 2*np.array(list(map(partial(quad, f, 0, limit=150, epsabs=1e-3), x)))[:, 0]
         #     xi_estimate = 2 * np.array([quad(f, 0, xi, limit=150, epsabs=1e-3)[0] for xi in x])
         # else:
         #     xi_estimate = 2*quad(f, 0, x, limit=150, epsabs=1e-3)[0]
 
-        xi_estimate = 2*quad(f, 0, x, limit=150, epsabs=1e-3)[0]
+        xi_estimate = 2*quad(f, 0, x, limit=150, epsrel=1e-3)[0]
 
         return np.maximum(xi_estimate, self.M1)
     
