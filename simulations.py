@@ -1,7 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
-from strategies import OptimalStrategy, reward, get_y1_and_zeta
+from itertools import chain
+
+from joblib import Parallel, delayed
+
+from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl
 from diffusionProcess import DiffusionProcess, b, sigma
 
 
@@ -77,9 +82,48 @@ def plot_reward_xi_obj():
     plt.show()
     return
 
-if __name__ == "__main__":
-    # plot_uncontrolled_diffusion()
 
-    simulate_optimal_strategy()
+diffPros = DiffusionProcess(b=b, sigma=sigma)
+opStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
+thresholdStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
 
-    # plot_reward_xi_obj()
+y1, zeta = get_y1_and_zeta(reward)
+
+sims = 100
+Ts = [200*i for i in range(1,51)]
+thresholds = np.linspace(y1, zeta, 7)
+
+data = []
+
+def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat, ThresholdStrat):
+    output = []
+    for T in Ts:
+        for s in range(sims):
+            diffusionProcess.generate_noise(T, 0.01)
+            ThresholdStrat.y_star = tau
+            threshold_reward = ThresholdStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+
+            output.append({
+                "threshold": tau,
+                "T": T,
+                "simNr": s,
+                "threshold_reward": threshold_reward,
+                "optimal_reward": opt_reward,
+                "regret": opt_reward-threshold_reward
+            })
+    
+    return output
+
+result = Parallel(n_jobs=-1)(delayed(simulate_threshold_vs_optimal)(tau, Ts, sims, diffPros, opStrat, thresholdStrat) for tau in thresholds)
+
+data_df = pd.DataFrame(list(chain.from_iterable(result)))
+data_df.to_csv(path_or_buf="./SimulationData/ThresholdData.csv", encoding="utf-8", header=True, index=False)
+
+
+# if __name__ == "__main__":
+#     # plot_uncontrolled_diffusion()
+
+#     #simulate_optimal_strategy()
+
+#     # plot_reward_xi_obj()
