@@ -62,7 +62,8 @@ class OptimalStrategy():
         t = 0
         X = 0
         while t < T:
-            self.take_decision(x=X)
+            if self.take_decision(x=X):
+                X = 0
             X = diffpros.step(x=X, t=t, dt=dt)
             t += dt
 
@@ -142,7 +143,7 @@ class DataDrivenImpulseControl():
     
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-6})
         return result.x
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
