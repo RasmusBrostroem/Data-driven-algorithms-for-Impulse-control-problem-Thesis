@@ -103,21 +103,21 @@ class DataDrivenImpulseControl():
         if rejected_keys:
             raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
     
-    def kernel_fit(self, data: list[float]) -> None:
-        data = np.array(data)[:, None]
+    # def kernel_fit(self, data: list[float]) -> None:
+    #     data = np.array(data)[:, None]
 
-        if not self.bandwidth:
-            bandwidth = np.arange(self.bandwidth_start, self.bandwidth_end, self.bandwidth_increment)
-            tmp_kde = KernelDensity(kernel=self.kernel_method)
-            grid = GridSearchCV(tmp_kde, {'bandwidth': bandwidth})
-            grid.fit(data)
-            self.kde = grid.best_estimator_
-            return
+    #     if not self.bandwidth:
+    #         bandwidth = np.arange(self.bandwidth_start, self.bandwidth_end, self.bandwidth_increment)
+    #         tmp_kde = KernelDensity(kernel=self.kernel_method)
+    #         grid = GridSearchCV(tmp_kde, {'bandwidth': bandwidth})
+    #         grid.fit(data)
+    #         self.kde = grid.best_estimator_
+    #         return
         
-        self.kde = KernelDensity(kernel=self.kernel_method, bandwidth=self.bandwidth)
-        self.kde.fit(data)
+    #     self.kde = KernelDensity(kernel=self.kernel_method, bandwidth=self.bandwidth)
+    #     self.kde.fit(data)
 
-    def kernel_fit_stats(self, data: list[float]) -> None:
+    def kernel_fit(self, data: list[float]) -> None:
         self.kde = KDEUnivariate(data)
         self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth)
 
@@ -126,35 +126,18 @@ class DataDrivenImpulseControl():
         self.cdf = res.cdf
 
     def fit(self, data: list[float]) -> None:
-        self.kernel_fit_stats(data)
+        self.kernel_fit(data)
         self.ecdf_fit(data)
     
     def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
         return self.cdf.evaluate(x)
-
-    def pdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
-        # if isinstance(x, Iterable):
-        #     data = x[:, None]
-        # else:
-        #     data = [[x]]
-        data = [[x]]
-        
-        logprob = self.kde.score_samples(data)
-        return np.exp(logprob)[0]
     
-    def pdf_eval_stats(self, x: float) -> float:
+    def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
 
     def xi_eval(self, x):
-        f = lambda y: self.cdf_eval(y)/max(self.pdf_eval_stats(y), self.a)
-        # if isinstance(x, Iterable):
-        #     #xi_estimate = 2*np.array(list(map(partial(quad, f, 0, limit=150, epsabs=1e-3), x)))[:, 0]
-        #     xi_estimate = 2 * np.array([quad(f, 0, xi, limit=150, epsabs=1e-3)[0] for xi in x])
-        # else:
-        #     xi_estimate = 2*quad(f, 0, x, limit=150, epsabs=1e-3)[0]
-
+        f = lambda y: self.cdf_eval(y)/max(self.pdf_eval(y), self.a)
         xi_estimate = 2*quad(f, 0, x, limit=150, epsrel=1e-3)[0]
-
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
@@ -195,11 +178,6 @@ class DataDrivenImpulseControl():
             t += dt
         
         return cumulativeReward, S_t
-
-            
-
-        
-
 
 if __name__ == "__main__":
     pass
