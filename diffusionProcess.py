@@ -23,7 +23,7 @@ class DiffusionProcess():
         self.noise = None
 
     def generate_noise(self, T, dt) -> None:
-        self.noise = np.random.normal(loc=0.0, scale=np.sqrt(dt), size=T/dt)
+        self.noise = np.random.normal(loc=0.0, scale=np.sqrt(dt), size=int(T/dt))
         return
 
 
@@ -75,8 +75,8 @@ class DiffusionProcess():
         Returns:
             float: _description_
         """
-        if self.noise:
-            return x + self.b(x, t)*dt + self.sigma(x, t)*self.noise[t/dt]
+        if not self.noise is None:
+            return x + self.b(x, t)*dt + self.sigma(x, t)*self.noise[int(t/dt)]
         
         return x + self.b(x, t)*dt + self.sigma(x, t)*np.random.normal(loc=0.0, scale=np.sqrt(dt))
 
