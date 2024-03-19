@@ -15,8 +15,6 @@ from collections.abc import Iterable
 
 from functools import lru_cache
 
-import numba as nb
-
 from diffusionProcess import DiffusionProcess
 
 
