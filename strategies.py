@@ -138,15 +138,18 @@ class DataDrivenImpulseControl():
 
     def xi_eval(self, x):
         f = lambda y: self.cdf_eval(y)/max(self.pdf_eval(y), self.a)
-        xi_estimate = 2*quad(f, 0, x, limit=150, epsrel=1e-3)[0]
+        xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-6})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
         return result.x
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
+        self.kde = None
+        self.cdf = None
+
         data = []
         X = 0
         t = 0
