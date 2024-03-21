@@ -68,8 +68,9 @@ class OptimalStrategy():
         return self.reward
     
 class DataDrivenImpulseControl():
-    def __init__(self, rewardFunc, **kwargs):
+    def __init__(self, rewardFunc, sigma, **kwargs):
         self.g = rewardFunc
+        self.sigma = sigma
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
 
         # Kernel attributes
@@ -102,19 +103,6 @@ class DataDrivenImpulseControl():
         if rejected_keys:
             raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
     
-    # def kernel_fit(self, data: list[float]) -> None:
-    #     data = np.array(data)[:, None]
-
-    #     if not self.bandwidth:
-    #         bandwidth = np.arange(self.bandwidth_start, self.bandwidth_end, self.bandwidth_increment)
-    #         tmp_kde = KernelDensity(kernel=self.kernel_method)
-    #         grid = GridSearchCV(tmp_kde, {'bandwidth': bandwidth})
-    #         grid.fit(data)
-    #         self.kde = grid.best_estimator_
-    #         return
-        
-    #     self.kde = KernelDensity(kernel=self.kernel_method, bandwidth=self.bandwidth)
-    #     self.kde.fit(data)
 
     def kernel_fit(self, data: list[float]) -> None:
         self.kde = KDEUnivariate(data)
@@ -135,7 +123,7 @@ class DataDrivenImpulseControl():
         return self.kde.evaluate(x)[0]
 
     def xi_eval(self, x):
-        f = lambda y: self.cdf_eval(y)/max(self.pdf_eval(y), self.a)
+        f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
         xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
         return np.maximum(xi_estimate, self.M1)
     
