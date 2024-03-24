@@ -90,35 +90,59 @@ def plot_reward_xi_obj():
 
 diffPros = DiffusionProcess(b=b, sigma=sigma)
 opStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
-thresholdStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward, sigma=sigma)
-dataStrat = DataDrivenImpulseControl(rewardFunc=reward)
+thresholdStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
+dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
+
 
 y1, zeta = get_y1_and_zeta(reward)
+
+sims = 50
+Ts = [50*i for i in range(1,61)]
+
+def simulate_MISE(T, sims, diffusionProcess, dataStrategy):
+    output = []
+    dataStrategy.bandwidth=1/np.sqrt(T)
+    for s in range(sims):
+        data, t = diffusionProcess.EulerMaruymaMethod(T, 0.01, 0)
+        dataStrategy.fit(data)
+        MISE = dataStrategy.MISE_eval(diffusionProcess)
+        output.append({
+            "T": T,
+            "s": s,
+            "MISE": MISE
+        })
+    
+    return output
+
+result = Parallel(n_jobs=7)(delayed(simulate_MISE)(T, sims, diffPros, dataStrat) for T in Ts)
+data_df = pd.DataFrame(list(chain.from_iterable(result)))
+data_df.to_csv(path_or_buf="./SimulationData/MISE2.csv", encoding="utf-8", header=True, index=False)
+
+
 
 # sims = 5
 # Ts = [100*i for i in range(1,51)]
 # thresholds = np.linspace(y1, zeta, 7)
 
-# def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat, ThresholdStrat):
-#     print(tau)
-#     output = []
-#     for T in Ts:
-#         for s in range(sims):
-#             diffusionProcess.generate_noise(T, 0.01)
-#             ThresholdStrat.y_star = tau
-#             threshold_reward = ThresholdStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
-#             opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat, ThresholdStrat):
+    output = []
+    for T in Ts:
+        for s in range(sims):
+            diffusionProcess.generate_noise(T, 0.01)
+            ThresholdStrat.y_star = tau
+            threshold_reward = ThresholdStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
 
-#             output.append({
-#                 "threshold": tau,
-#                 "T": T,
-#                 "simNr": s,
-#                 "threshold_reward": threshold_reward,
-#                 "optimal_reward": opt_reward,
-#                 "regret": opt_reward-threshold_reward
-#             })
+            output.append({
+                "threshold": tau,
+                "T": T,
+                "simNr": s,
+                "threshold_reward": threshold_reward,
+                "optimal_reward": opt_reward,
+                "regret": opt_reward-threshold_reward
+            })
     
-#     return output
+    return output
 
 # result = Parallel(n_jobs=-1)(delayed(simulate_threshold_vs_optimal)(tau, Ts, sims, diffPros, opStrat, thresholdStrat) for tau in thresholds)
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
@@ -147,12 +171,12 @@ def simulate_dataDriven_vs_optimal(T, sims, diffusionProcess, OptimalStrat, Data
     
     return output
 
-Ts = [100*i for i in range(1,51)]
-sims = 10
+# Ts = [100*i for i in range(1,51)]
+# sims = 10
 
-result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(T, sims, diffPros, opStrat, dataStrat) for T in Ts)
-data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/DataStratIncreasingTData.csv", encoding="utf-8", header=True, index=False)
+# result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(T, sims, diffPros, opStrat, dataStrat) for T in Ts)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/DataStratIncreasingTData.csv", encoding="utf-8", header=True, index=False)
 
 # if __name__ == "__main__":
 #     # plot_uncontrolled_diffusion()

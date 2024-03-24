@@ -16,8 +16,11 @@ library(stats)
 ```
 
 ```{r}
+setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 thresholdData <- read.csv("./SimulationData/ThresholdData.csv")
 DataStratData <- read.csv("./SimulationData/DataStratIncreasingTData.csv")
+MISEData <- read.csv("./SimulationData/MISE.csv")
+MISEData2 <- read.csv("./SimulationData/MISE2.csv")
 ```
 
 
@@ -107,6 +110,23 @@ m <- nls(regret ~ I(T^power), data = DataStratData, start = list(power=1), trace
 
 ```{r}
 summary(m)
+```
+
+
+# MISE data plots
+```{r}
+avgMiseData <- MISEData %>% group_by(T) %>% summarise(avgMise = mean(MISE),
+                                                      sdMise = sd(MISE),
+                                                      .groups = "drop")
+avgMiseData2 <- MISEData2 %>% group_by(T) %>% summarise(avgMise = mean(MISE),
+                                                      sdMise = sd(MISE),
+                                                      .groups = "drop")
+```
+
+
+```{r}
+ggplot(avgMiseData2, aes(x=T, y=avgMise))+
+  geom_line()
 ```
 
 

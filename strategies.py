@@ -121,6 +121,10 @@ class DataDrivenImpulseControl():
     
     def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
+    
+    def MISE_eval(self, diffpros: DiffusionProcess):
+        f = lambda x: (self.pdf_eval(x) - diffpros.invariant_density(x))**2
+        return quad(f, -np.inf, np.inf, limit=250, epsrel=1e-8)[0]
 
     def xi_eval(self, x):
         f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)

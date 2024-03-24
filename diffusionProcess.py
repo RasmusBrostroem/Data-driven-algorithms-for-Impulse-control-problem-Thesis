@@ -26,7 +26,6 @@ class DiffusionProcess():
         self.noise = np.random.normal(loc=0.0, scale=np.sqrt(dt), size=int(T/dt))
         return
 
-
     def EulerMaruymaMethod(self,
                            T: float,
                            dt: float,
@@ -79,7 +78,6 @@ class DiffusionProcess():
             return x + self.b(x, t)*dt + self.sigma(x, t)*self.noise[int(t/dt)]
         
         return x + self.b(x, t)*dt + self.sigma(x, t)*np.random.normal(loc=0.0, scale=np.sqrt(dt))
-
 
     def getC_b_sigma(self):
         def inner_integral(u):
