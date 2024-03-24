@@ -96,8 +96,6 @@ dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
 
 y1, zeta = get_y1_and_zeta(reward)
 
-sims = 50
-Ts = [50*i for i in range(1,61)]
 
 def simulate_MISE(T, sims, diffusionProcess, dataStrategy):
     output = []
@@ -114,11 +112,34 @@ def simulate_MISE(T, sims, diffusionProcess, dataStrategy):
     
     return output
 
-result = Parallel(n_jobs=7)(delayed(simulate_MISE)(T, sims, diffPros, dataStrat) for T in Ts)
+# sims = 50
+# Ts = [100*i for i in range(1,61)]
+
+# result = Parallel(n_jobs=7)(delayed(simulate_MISE)(T, sims, diffPros, dataStrat) for T in Ts)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/MISE2.csv", encoding="utf-8", header=True, index=False)
+
+def simulate_KL(T, sims, diffusionProcess, dataStrategy):
+    output = []
+    dataStrategy.bandwidth = 1/np.sqrt(T)
+    for s in range(sims):
+        data, t = diffusionProcess.EulerMaruymaMethod(T, 0.01, 0)
+        dataStrategy.kernel_fit(data)
+        KL = dataStrategy.KL_eval(diffusionProcess)
+        output.append({
+            "T": T,
+            "s": s,
+            "KL": KL
+        })
+    
+    return output
+
+sims = 50
+Ts = [100*i for i in range(1,31)]
+
+result = Parallel(n_jobs=7)(delayed(simulate_KL)(T, sims, diffPros, dataStrat) for T in Ts)
 data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/MISE2.csv", encoding="utf-8", header=True, index=False)
-
-
+data_df.to_csv(path_or_buf="./SimulationData/KL.csv", encoding="utf-8", header=True, index=False)
 
 # sims = 5
 # Ts = [100*i for i in range(1,51)]
