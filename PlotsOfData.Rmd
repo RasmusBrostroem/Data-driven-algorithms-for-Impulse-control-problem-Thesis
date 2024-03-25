@@ -21,6 +21,7 @@ thresholdData <- read.csv("./SimulationData/ThresholdData.csv")
 DataStratData <- read.csv("./SimulationData/DataStratIncreasingTData.csv")
 MISEData <- read.csv("./SimulationData/MISE.csv")
 MISEData2 <- read.csv("./SimulationData/MISE2.csv")
+KLData <- read.csv("./SimulationData/KL.csv")
 ```
 
 
@@ -127,6 +128,23 @@ avgMiseData2 <- MISEData2 %>% group_by(T) %>% summarise(avgMise = mean(MISE),
 ```{r}
 ggplot(avgMiseData2, aes(x=T, y=avgMise))+
   geom_line()
+```
+
+# KL Data plot
+```{r}
+avgKLData <- KLData %>% group_by(T) %>% summarise(avgKL = mean(KL),
+                                                  sdKL = sd(KL),
+                                                  .groups = "drop")
+```
+
+```{r}
+ggplot(avgKLData, aes(x=T, y=avgKL))+
+  geom_line()
+```
+
+```{r}
+ggplot(KLData, aes(x=T, y=KL))+
+  geom_point()
 ```
 
 
