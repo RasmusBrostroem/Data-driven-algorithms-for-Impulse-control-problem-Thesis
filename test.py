@@ -1,6 +1,6 @@
 from scipy.integrate import odeint, quad
 from diffusionProcess import b, sigma, DiffusionProcess
-from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy
+from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func
 from time import time
 import numpy as np
 from collections.abc import Iterable
@@ -32,8 +32,48 @@ import neptune
 # thresholdStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
 # dataStrat = DataDrivenImpulseControl(rewardFunc=reward)
 
-y1, zeta = get_y1_and_zeta(reward)
+r = generate_reward_func(5)
 
+def plot_reward_xi_obj():
+    difPros = DiffusionProcess(b, sigma)
+    optStrat = OptimalStrategy(difPros, r)
+    y1, zeta = get_y1_and_zeta(g=r)
+    print(f"y1 = {y1} and zeta = {zeta}")
+
+    y = np.linspace(y1, zeta*2, 100)
+    gs = r(y)
+
+    xis = difPros.xi(y)
+    xis_theo = difPros.xi_theoretical(y)
+
+    vals = gs/xis
+
+    y_star = optStrat.get_optimal_threshold()
+
+    plt.plot(y, gs)
+    plt.title("Reward function")
+    plt.show()
+
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    fig.suptitle("Expected time before reaching value")
+    ax1.plot(y,xis)
+    ax1.set_title("Calculated xi")
+    ax2.plot(y,xis_theo)
+    ax2.set_title("Theoretical xi")
+    plt.show()
+
+    print(f"Optimal threshold = {y_star}")
+    plt.plot(y, vals)
+    plt.title("Objective function")
+    plt.show()
+    return
+
+
+print(f"reward at 0 = {r(0)}")
+
+#plot_reward_xi_obj()
+
+print(inspect.getsource(r))
 #run = neptune.init_run(project='rasmusbrostroem/DiffusionControl')
 # def simulate_dataDriven_vs_optimal(T, sims):
 #     run = neptune.init_run(project='rasmusbrostroem/DiffusionControl')
