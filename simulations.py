@@ -10,9 +10,10 @@ from joblib import Parallel, delayed
 import warnings
 import os
 
+import inspect
 
 from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl
-from diffusionProcess import DiffusionProcess, b, sigma
+from diffusionProcess import DiffusionProcess, b, sigma, b_linear_generate
 
 
 def simulate_optimal_strategy(T=10, dt=0.01):
@@ -134,12 +135,12 @@ def simulate_KL(T, sims, diffusionProcess, dataStrategy):
     
     return output
 
-sims = 50
-Ts = [100*i for i in range(1,31)]
+# sims = 50
+# Ts = [100*i for i in range(1,31)]
 
-result = Parallel(n_jobs=7)(delayed(simulate_KL)(T, sims, diffPros, dataStrat) for T in Ts)
-data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/KL.csv", encoding="utf-8", header=True, index=False)
+# result = Parallel(n_jobs=7)(delayed(simulate_KL)(T, sims, diffPros, dataStrat) for T in Ts)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/KL.csv", encoding="utf-8", header=True, index=False)
 
 # sims = 5
 # Ts = [100*i for i in range(1,51)]
@@ -169,35 +170,44 @@ def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat,
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
 # data_df.to_csv(path_or_buf="./SimulationData/ThresholdData.csv", encoding="utf-8", header=True, index=False)
 
-def simulate_dataDriven_vs_optimal(T, sims, diffusionProcess, OptimalStrat, DataStrat):
+def simulate_dataDriven_vs_optimal(C, Ts, sims, OptimalStrat, DataStrat):
     output = []
-    DataStrat.bandwidth = 1/np.sqrt(T)
-    for s in range(sims):
-        diffusionProcess.generate_noise(T, 0.01)
-        dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
-        opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+    for intersept in [True, False]:
+        diffusionProcess = DiffusionProcess(b=b_linear_generate(C, intersept), sigma=sigma)
+        for T in Ts:
+            DataStrat.bandwidth = 1/np.sqrt(T)
+            for s in range(sims):
+                diffusionProcess.generate_noise(T, 0.01)
+                dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+                opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
 
-        output.append({
-            "T": T,
-            "simNr": s,
-            "kernel": DataStrat.kernel_method,
-            "bandwidth": "1/sqrt(T)",
-            "a": DataStrat.a,
-            "M1": DataStrat.M1,
-            "S_T": S_T,
-            "data_reward": dataReward,
-            "optimal_reward": opt_reward,
-            "regret": opt_reward-dataReward
-        })
+                output.append({
+                    "rewardFunc": inspect.getsource(dataStrat.g),
+                    "sigmaFunc": inspect.getsource(diffusionProcess.sigma),
+                    "driftFunc": inspect.getsource(diffusionProcess.b),
+                    "T": T,
+                    "simNr": s,
+                    "C": C,
+                    "intercept": intersept,
+                    "kernel": DataStrat.kernel_method,
+                    "bandwidth": "1/sqrt(T)",
+                    "a": DataStrat.a,
+                    "M1": DataStrat.M1,
+                    "S_T": S_T,
+                    "data_reward": dataReward,
+                    "optimal_reward": opt_reward,
+                    "regret": opt_reward-dataReward
+                })
     
     return output
 
-# Ts = [100*i for i in range(1,51)]
-# sims = 10
+Ts = [100*i for i in range(1,51)]
+Cs = [1/8, 1/4, 1/2, 1, 1.25, 1.5, 1.75, 2]
+sims = 100
 
-# result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(T, sims, diffPros, opStrat, dataStrat) for T in Ts)
-# data_df = pd.DataFrame(list(chain.from_iterable(result)))
-# data_df.to_csv(path_or_buf="./SimulationData/DataStratIncreasingTData.csv", encoding="utf-8", header=True, index=False)
+result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(C, Ts, sims, opStrat, dataStrat) for C in Cs)
+data_df = pd.DataFrame(list(chain.from_iterable(result)))
+data_df.to_csv(path_or_buf="./SimulationData/Drifts/DifferentLinearDrifts.csv", encoding="utf-8", header=True, index=False)
 
 # if __name__ == "__main__":
 #     # plot_uncontrolled_diffusion()
