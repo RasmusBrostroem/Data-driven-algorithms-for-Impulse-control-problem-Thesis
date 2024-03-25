@@ -22,8 +22,11 @@ def reward(x):
     return 1/2 - np.abs(1-x)**2
     # return 10 - np.abs(4-3*x)**2
 
+def generate_reward_func(power):
+    return lambda x: 7/10 - np.abs(1-x)**power
+
 def get_y1_and_zeta(g):
-    roots = fsolve(g, [0, 10000])
+    roots = fsolve(g, [0, 10])
     f = lambda y: y if reward(y) > 0 else np.inf
     result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
     y1 = result.x
