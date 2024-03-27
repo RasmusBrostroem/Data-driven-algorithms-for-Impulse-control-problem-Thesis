@@ -14,6 +14,7 @@ from scipy.stats import ecdf
 from collections.abc import Iterable
 
 from functools import lru_cache
+from sortedcontainers import SortedDict
 
 from diffusionProcess import DiffusionProcess
 
@@ -89,6 +90,8 @@ class DataDrivenImpulseControl():
         self.kde = None
         self.cdf = None
 
+        self.xi_evaluated_x = SortedDict()
+
     def update_attributes_on_kwargs(self, **kwargs):
         # Get a list of all predefined attributes
         allowed_keys = list(self.__dict__.keys())
@@ -102,7 +105,6 @@ class DataDrivenImpulseControl():
         rejected_keys = set(kwargs.keys()) - set(allowed_keys)
         if rejected_keys:
             raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
-    
 
     def kernel_fit(self, data: list[float]) -> None:
         self.kde = KDEUnivariate(data)
@@ -122,13 +124,34 @@ class DataDrivenImpulseControl():
     def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
 
+    def xi_eval_new(self, x):
+        f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
+
+        lower_xi_evaluated_x = next(self.xi_evaluated_x.irange(maximum=x, reverse=True), None)
+
+        if lower_xi_evaluated_x:
+            xi_estimate = self.xi_evaluated_x[lower_xi_evaluated_x] + \
+                2*quad(f, lower_xi_evaluated_x, x, limit=250, epsabs=1e-3)[0] 
+            
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+
+        xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
+        self.xi_evaluated_x[x] = xi_estimate
+        return np.maximum(xi_estimate, self.M1)
+    
     def xi_eval(self, x):
         f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
         xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
         return np.maximum(xi_estimate, self.M1)
-    
+
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
+        return result.x
+    
+    def estimate_threshold_new(self) -> float:
+        obj = lambda y: -self.g(y)/self.xi_eval_new(y)
         result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
         return result.x
     
