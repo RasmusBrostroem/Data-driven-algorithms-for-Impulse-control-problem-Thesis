@@ -1,5 +1,6 @@
 from scipy.integrate import odeint, quad
 from diffusionProcess import b, sigma, DiffusionProcess
+#from diffusionProcess_cy import b, sigma, DiffusionProcess
 from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy
 from time import time
 import numpy as np
@@ -35,7 +36,17 @@ dataStrat.bandwidth = 1/np.sqrt(100)
 y1, zeta = get_y1_and_zeta(reward)
 
 start = time()
-dataStrat.simulate(diffpros=diffPros, T=100, dt=0.01)
+diffPros.generate_noise(5000, 0.01)
+t = 0
+dt = 0.01
+x = 0
+while t <= 5000:
+    x = diffPros.step(x, t, dt)
+    t += dt
+# for i in range(10):
+#     x, t = diffPros.EulerMaruymaMethod(T=100, dt=0.01, x0=0)
+#     dataStrat.fit(x)
+#     dataStrat.estimate_threshold()
 print(f"Data simulation took {time()-start} seconds")
 
 
