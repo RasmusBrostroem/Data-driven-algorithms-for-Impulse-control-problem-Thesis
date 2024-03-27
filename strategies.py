@@ -10,6 +10,7 @@ from mpmath import hyp2f2
 from sklearn.neighbors import KernelDensity
 from sklearn.model_selection import GridSearchCV
 from statsmodels.nonparametric.kde import KDEUnivariate
+from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.stats import ecdf
 from collections.abc import Iterable
 
@@ -106,6 +107,9 @@ class DataDrivenImpulseControl():
         if rejected_keys:
             raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
 
+    def clear_sorted_dict(self):
+        self.xi_evaluated_x.clear()
+    
     def kernel_fit(self, data: list[float]) -> None:
         self.kde = KDEUnivariate(data)
         self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth)
@@ -113,19 +117,45 @@ class DataDrivenImpulseControl():
     def ecdf_fit(self, data: list[float]) -> None:
         res = ecdf(sample=data)
         self.cdf = res.cdf
+    
+    def ecdf_fit_new(self, data: list[float]) -> None:
+        self.cdf = ECDF(data)
 
     def fit(self, data: list[float]) -> None:
         self.kernel_fit(data)
         self.ecdf_fit(data)
     
+    def fit_new(self, data) -> None:
+        self.kernel_fit(data)
+        self.ecdf_fit_new(data)
+    
     def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
         return self.cdf.evaluate(x)
+    
+    def cdf_eval_new(self, x):
+        return self.cdf(x)
     
     def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
 
     def xi_eval_new(self, x):
         f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
+
+        lower_xi_evaluated_x = next(self.xi_evaluated_x.irange(maximum=x, reverse=True), None)
+
+        if lower_xi_evaluated_x:
+            xi_estimate = self.xi_evaluated_x[lower_xi_evaluated_x] + \
+                2*quad(f, lower_xi_evaluated_x, x, limit=250, epsabs=1e-3)[0] 
+            
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+
+        xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
+        self.xi_evaluated_x[x] = xi_estimate
+        return np.maximum(xi_estimate, self.M1)
+    
+    def xi_eval_new_new(self, x):
+        f = lambda y: self.cdf_eval_new(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
 
         lower_xi_evaluated_x = next(self.xi_evaluated_x.irange(maximum=x, reverse=True), None)
 
@@ -148,12 +178,17 @@ class DataDrivenImpulseControl():
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
         result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
-        return result.x
+        return result.x, result.nfev, result.nit
     
     def estimate_threshold_new(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval_new(y)
         result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
-        return result.x
+        return result.x, result.nfev, result.nit
+    
+    def estimate_threshold_new_new(self) -> float:
+        obj = lambda y: -self.g(y)/self.xi_eval_new_new(y)
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
+        return result.x, result.nfev, result.nit
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
         self.kde = None
