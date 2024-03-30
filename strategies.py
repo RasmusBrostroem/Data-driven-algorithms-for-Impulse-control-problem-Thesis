@@ -153,11 +153,14 @@ class DataDrivenImpulseControl():
         xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
         self.xi_evaluated_x[x] = xi_estimate
         return np.maximum(xi_estimate, self.M1)
-    
+
     def xi_eval_new_new(self, x):
         f = lambda y: self.cdf_eval_new(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
 
         lower_xi_evaluated_x = next(self.xi_evaluated_x.irange(maximum=x, reverse=True), None)
+
+        if x == lower_xi_evaluated_x:
+            return self.xi_evaluated_x[x]
 
         if lower_xi_evaluated_x:
             xi_estimate = self.xi_evaluated_x[lower_xi_evaluated_x] + \
@@ -177,17 +180,17 @@ class DataDrivenImpulseControl():
 
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-2})
         return result.x, result.nfev, result.nit
     
     def estimate_threshold_new(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval_new(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-2})
         return result.x, result.nfev, result.nit
     
     def estimate_threshold_new_new(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval_new_new(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-2})
         return result.x, result.nfev, result.nit
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
