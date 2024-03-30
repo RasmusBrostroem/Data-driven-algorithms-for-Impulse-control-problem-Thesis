@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Callable, Union
 from scipy.optimize import minimize_scalar, fsolve
-from scipy.integrate import quad, nquad, dblquad
+from scipy.integrate import quad
+from scipy.interpolate import interp1d
 from functools import partial
 from collections.abc import Iterable
 import math
@@ -11,8 +12,9 @@ from sklearn.neighbors import KernelDensity
 from sklearn.model_selection import GridSearchCV
 from statsmodels.nonparametric.kde import KDEUnivariate
 from statsmodels.distributions.empirical_distribution import ECDF
-from scipy.stats import ecdf
 from collections.abc import Iterable
+
+from time import time
 
 from functools import lru_cache
 from sortedcontainers import SortedDict
@@ -91,7 +93,9 @@ class DataDrivenImpulseControl():
         self.kde = None
         self.cdf = None
 
-        self.xi_evaluated_x = SortedDict()
+        self.xi_evaluated_x = {}
+        self.cdf_evaluated_x = None
+        self.pdf_evaluated_x = None
 
     def update_attributes_on_kwargs(self, **kwargs):
         # Get a list of all predefined attributes
@@ -107,80 +111,99 @@ class DataDrivenImpulseControl():
         if rejected_keys:
             raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
 
-    def clear_sorted_dict(self):
+    def clear_cache(self):
         self.xi_evaluated_x.clear()
+        self.pdf_evaluated_x = None
+        self.cdf_evaluated_x = None
     
     def kernel_fit(self, data: list[float]) -> None:
         self.kde = KDEUnivariate(data)
         self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth)
 
     def ecdf_fit(self, data: list[float]) -> None:
-        res = ecdf(sample=data)
-        self.cdf = res.cdf
-    
-    def ecdf_fit_new(self, data: list[float]) -> None:
         self.cdf = ECDF(data)
-
+    
     def fit(self, data: list[float]) -> None:
         self.kernel_fit(data)
         self.ecdf_fit(data)
-    
-    def fit_new(self, data) -> None:
+
+    def fit_new(self, data: list[float]) -> None:
         self.kernel_fit(data)
-        self.ecdf_fit_new(data)
+        self.ecdf_fit(data)
+        xs = np.linspace(0, self.zeta, 100)
+        pdf_values = np.array([self.pdf_eval(x) for x in xs])
+        self.pdf_evaluated_x = interp1d(xs, pdf_values, kind="linear")
+        # cdf_values = np.array([self.cdf_eval(x) for x in xs])
+        # self.cdf_evaluated_x = interp1d(xs, cdf_values, kind="linear")
     
     def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
-        return self.cdf.evaluate(x)
-    
-    def cdf_eval_new(self, x):
         return self.cdf(x)
+    
+    def cdf_eval_interpolate(self, x):
+        return self.cdf_evaluated_x(x)
     
     def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
-
-    def xi_eval_new(self, x):
-        f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
-
-        lower_xi_evaluated_x = next(self.xi_evaluated_x.irange(maximum=x, reverse=True), None)
-
-        if lower_xi_evaluated_x:
-            xi_estimate = self.xi_evaluated_x[lower_xi_evaluated_x] + \
-                2*quad(f, lower_xi_evaluated_x, x, limit=250, epsabs=1e-3)[0] 
-            
-            self.xi_evaluated_x[x] = xi_estimate
-            return np.maximum(xi_estimate, self.M1)
-
-        xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
-        self.xi_evaluated_x[x] = xi_estimate
-        return np.maximum(xi_estimate, self.M1)
-
-    def xi_eval_new_new(self, x):
-        f = lambda y: self.cdf_eval_new(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
-
-        lower_xi_evaluated_x = next(self.xi_evaluated_x.irange(maximum=x, reverse=True), None)
-
-        if x == lower_xi_evaluated_x:
-            return self.xi_evaluated_x[x]
-
-        if lower_xi_evaluated_x:
-            xi_estimate = self.xi_evaluated_x[lower_xi_evaluated_x] + \
-                2*quad(f, lower_xi_evaluated_x, x, limit=250, epsabs=1e-3)[0] 
-            
-            self.xi_evaluated_x[x] = xi_estimate
-            return np.maximum(xi_estimate, self.M1)
-
-        xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
-        self.xi_evaluated_x[x] = xi_estimate
-        return np.maximum(xi_estimate, self.M1)
+    
+    def pdf_eval_interpolate(self, x):
+        return self.pdf_evaluated_x(x)
     
     def xi_eval(self, x):
         f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
         xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
         return np.maximum(xi_estimate, self.M1)
 
+    def xi_eval_new(self, x):
+        f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
+
+        if not self.xi_evaluated_x:
+            #print(f"Found no lower x when evaluating x={x}")
+            xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-2)[0]
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+
+        closest_x_evaluated, xi_val = min(self.xi_evaluated_x.items(), key=lambda y: abs(x - y[0]))
+
+        if closest_x_evaluated <= x:
+            #print(f"Found lower x evaluated = {closest_x_evaluated} with new x to evaluate {x}")
+            xi_estimate = xi_val + 2*quad(f, closest_x_evaluated, x, limit=250, epsabs=1e-2)[0] 
+            
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+        
+        #print(f"Found upper x evaluated = {closest_x_evaluated} with new x to evaluate {x}")
+        xi_estimate = xi_val - 2*quad(f, x, closest_x_evaluated, limit=250, epsabs=1e-2)[0] 
+        
+        self.xi_evaluated_x[x] = xi_estimate
+        return np.maximum(xi_estimate, self.M1)
+    
+    def xi_eval_new_new(self, x):
+        f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval_interpolate(y), self.a)*self.sigma(y)**2)
+
+        if not self.xi_evaluated_x:
+            #print(f"Found no lower x when evaluating x={x}")
+            xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-2)[0]
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+
+        closest_x_evaluated, xi_val = min(self.xi_evaluated_x.items(), key=lambda y: abs(x - y[0]))
+
+        if closest_x_evaluated <= x:
+            #print(f"Found lower x evaluated = {closest_x_evaluated} with new x to evaluate {x}")
+            xi_estimate = xi_val + 2*quad(f, closest_x_evaluated, x, limit=250, epsabs=1e-2)[0] 
+            
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+        
+        #print(f"Found upper x evaluated = {closest_x_evaluated} with new x to evaluate {x}")
+        xi_estimate = xi_val - 2*quad(f, x, closest_x_evaluated, limit=250, epsabs=1e-2)[0] 
+        
+        self.xi_evaluated_x[x] = xi_estimate
+        return np.maximum(xi_estimate, self.M1)
+
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-2})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
         return result.x, result.nfev, result.nit
     
     def estimate_threshold_new(self) -> float:
