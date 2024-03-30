@@ -124,10 +124,12 @@ class DataDrivenImpulseControl():
         self.cdf = ECDF(data)
     
     def fit(self, data: list[float]) -> None:
+        self.clear_cache()
         self.kernel_fit(data)
         self.ecdf_fit(data)
 
     def fit_new(self, data: list[float]) -> None:
+        self.clear_cache()
         self.kernel_fit(data)
         self.ecdf_fit(data)
         xs = np.linspace(0, self.zeta, 100)
@@ -228,6 +230,7 @@ class DataDrivenImpulseControl():
         exploring = True
         threshold = None
         cumulativeReward = 0
+        thresholds = []
 
         while t < T:
             if exploring:
@@ -238,7 +241,8 @@ class DataDrivenImpulseControl():
             
             if reachedZeta and X <= 0:
                 self.fit(data)
-                threshold = self.estimate_threshold()
+                threshold, _, _ = self.estimate_threshold()
+                thresholds.append(threshold)
                 exploring = False
                 reachedZeta = False
             
@@ -250,7 +254,85 @@ class DataDrivenImpulseControl():
             
             X = diffpros.step(X, t, dt)
             t += dt
-        
+        print(f"\n Number of thresholds calculated {len(thresholds)}")
+        return cumulativeReward, S_t
+    
+    def simulate_new(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
+        self.kde = None
+        self.cdf = None
+
+        data = []
+        X = 0
+        t = 0
+        S_t = 0
+        reachedZeta = False
+        exploring = True
+        threshold = None
+        cumulativeReward = 0
+        thresholds = []
+
+        while t < T:
+            if exploring:
+                data.append(X)
+                S_t += dt
+                if X >= self.zeta:
+                    reachedZeta = True
+            
+            if reachedZeta and X <= 0:
+                self.fit(data)
+                threshold, _, _ = self.estimate_threshold_new()
+                thresholds.append(threshold)
+                exploring = False
+                reachedZeta = False
+            
+            if not exploring and X >= threshold:
+                cumulativeReward += self.g(X)
+                X = 0
+                if S_t < t**(2/3):
+                    exploring = True
+            
+            X = diffpros.step(X, t, dt)
+            t += dt
+        print(f"\n Number of thresholds calculated {len(thresholds)}")
+        return cumulativeReward, S_t
+    
+    def simulate_new_new(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
+        self.kde = None
+        self.cdf = None
+
+        data = []
+        X = 0
+        t = 0
+        S_t = 0
+        reachedZeta = False
+        exploring = True
+        threshold = None
+        cumulativeReward = 0
+        thresholds = []
+
+        while t < T:
+            if exploring:
+                data.append(X)
+                S_t += dt
+                if X >= self.zeta:
+                    reachedZeta = True
+            
+            if reachedZeta and X <= 0:
+                self.fit_new(data)
+                threshold, _, _ = self.estimate_threshold_new_new()
+                thresholds.append(threshold)
+                exploring = False
+                reachedZeta = False
+            
+            if not exploring and X >= threshold:
+                cumulativeReward += self.g(X)
+                X = 0
+                if S_t < t**(2/3):
+                    exploring = True
+            
+            X = diffpros.step(X, t, dt)
+            t += dt
+        print(f"\n Number of thresholds calculated {len(thresholds)}")
         return cumulativeReward, S_t
 
 if __name__ == "__main__":
