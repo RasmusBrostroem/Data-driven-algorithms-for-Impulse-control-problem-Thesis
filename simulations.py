@@ -7,11 +7,13 @@ from scipy.integrate import IntegrationWarning
 
 from joblib import Parallel, delayed
 
+import inspect
+
 import warnings
 import os
 
 
-from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl
+from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl, generate_reward_func
 from diffusionProcess import DiffusionProcess, b, sigma
 
 
@@ -89,9 +91,9 @@ def plot_reward_xi_obj():
 
 
 diffPros = DiffusionProcess(b=b, sigma=sigma)
-opStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
+#opStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
 thresholdStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
-dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
+#dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
 
 
 y1, zeta = get_y1_and_zeta(reward)
@@ -189,35 +191,44 @@ def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat,
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
 # data_df.to_csv(path_or_buf="./SimulationData/ThresholdData.csv", encoding="utf-8", header=True, index=False)
 
-def simulate_dataDriven_vs_optimal(T, sims, diffusionProcess, OptimalStrat, DataStrat):
+def simulate_dataDriven_vs_optimal(rewardPower, Ts, sims, diffusionProcess):
     output = []
-    DataStrat.bandwidth = 1/np.sqrt(T)
-    for s in range(sims):
-        diffusionProcess.generate_noise(T, 0.01)
-        dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
-        opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+    r = generate_reward_func(power=rewardPower)
+    OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=r)
+    DataStrat = DataDrivenImpulseControl(rewardFunc=r, sigma=sigma)
+    for T in Ts:
+        DataStrat.bandwidth = 1/np.sqrt(T)
+        for s in range(sims):
+            diffusionProcess.generate_noise(T, 0.01)
+            dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
 
-        output.append({
-            "T": T,
-            "simNr": s,
-            "kernel": DataStrat.kernel_method,
-            "bandwidth": "1/sqrt(T)",
-            "a": DataStrat.a,
-            "M1": DataStrat.M1,
-            "S_T": S_T,
-            "data_reward": dataReward,
-            "optimal_reward": opt_reward,
-            "regret": opt_reward-dataReward
-        })
+            output.append({
+                "Drift": inspect.getsource(diffusionProcess.b),
+                "Sigma": inspect.getsource(diffusionProcess.sigma),
+                "rewardFunc": inspect.getsource(r),
+                "rewardPower": rewardPower,
+                "T": T,
+                "simNr": s,
+                "kernel": DataStrat.kernel_method,
+                "bandwidth": "1/sqrt(T)",
+                "a": DataStrat.a,
+                "M1": DataStrat.M1,
+                "S_T": S_T,
+                "data_reward": dataReward,
+                "optimal_reward": opt_reward,
+                "regret": opt_reward-dataReward
+            })
     
     return output
 
-# Ts = [100*i for i in range(1,51)]
-# sims = 10
+Ts = [100*i for i in range(1,51)]
+powers = [1/5, 1/2, 1, 2, 5]
+sims = 100
 
-# result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(T, sims, diffPros, opStrat, dataStrat) for T in Ts)
-# data_df = pd.DataFrame(list(chain.from_iterable(result)))
-# data_df.to_csv(path_or_buf="./SimulationData/DataStratIncreasingTData.csv", encoding="utf-8", header=True, index=False)
+result = Parallel(n_jobs=5)(delayed(simulate_dataDriven_vs_optimal)(p, Ts, sims, diffPros) for p in powers)
+data_df = pd.DataFrame(list(chain.from_iterable(result)))
+data_df.to_csv(path_or_buf="./SimulationData/RewardFunctions/DataStratDifferentRewards.csv", encoding="utf-8", header=True, index=False)
 
 # if __name__ == "__main__":
 #     # plot_uncontrolled_diffusion()

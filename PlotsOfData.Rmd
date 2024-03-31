@@ -16,7 +16,8 @@ library(stats)
 ```
 
 ```{r}
-setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 thresholdData <- read.csv("./SimulationData/ThresholdData.csv")
 DataStratData <- read.csv("./SimulationData/DataStratIncreasingTData.csv")
 MISEData <- read.csv("./SimulationData/MISE.csv")
