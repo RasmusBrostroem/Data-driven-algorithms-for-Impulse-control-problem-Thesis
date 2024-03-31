@@ -24,6 +24,7 @@ MISEData2 <- read.csv("./SimulationData/MISE2.csv")
 MISEData3 <- read.csv("./SimulationData/MISE3.csv")
 KLData <- read.csv("./SimulationData/KL.csv")
 KLData2 <- read.csv("./SimulationData/KL2.csv")
+thresholdDiffData <- read.csv("./SimulationData/ThresholdDiff.csv")
 ```
 
 
@@ -155,4 +156,15 @@ ggplot(KLData2, aes(x=T, y=KL))+
   geom_point()
 ```
 
+# Threshold difference between optimal and estimated
+```{r}
+avgThresholdDiff <- thresholdDiffData %>% group_by(T) %>%  summarise(avgDiff = mean(SquareDiff),
+                                                                     sdDiff = sd(SquareDiff),
+                                                                     .groups = "drop")
+```
+
+```{r}
+ggplot(avgThresholdDiff, aes(x=T, y=avgDiff))+
+  geom_line()
+```
 

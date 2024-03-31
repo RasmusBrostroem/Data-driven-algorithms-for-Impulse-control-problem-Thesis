@@ -96,7 +96,6 @@ dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
 
 y1, zeta = get_y1_and_zeta(reward)
 
-
 def simulate_MISE(T, sims, diffusionProcess, dataStrategy):
     output = []
     dataStrategy.bandwidth=1/np.sqrt(T)
@@ -112,8 +111,8 @@ def simulate_MISE(T, sims, diffusionProcess, dataStrategy):
     
     return output
 
-sims = 50
-Ts = [100*i for i in range(1,21)]
+# sims = 50
+# Ts = [100*i for i in range(1,21)]
 
 # result = Parallel(n_jobs=7)(delayed(simulate_MISE)(T, sims, diffPros, dataStrat) for T in Ts)
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
@@ -134,16 +133,33 @@ def simulate_KL(T, sims, diffusionProcess, dataStrategy):
     
     return output
 
+# sims = 50
+# Ts = [100*i for i in range(1,21)]
+
+# result = Parallel(n_jobs=7)(delayed(simulate_KL)(T, sims, diffPros, dataStrat) for T in Ts)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/KL2.csv", encoding="utf-8", header=True, index=False)
+
+def simulate_threshold_estimation(T, sims, diffusionProcess: DiffusionProcess, ystar, dataStrategy: DataDrivenImpulseControl):
+    output = []
+    dataStrategy.bandwidth = 1/np.sqrt(T)
+    for s in range(sims):
+        data, t = diffusionProcess.EulerMaruymaMethod(T, 0.01, 0)
+        dataStrategy.fit(data)
+        threshold = dataStrategy.estimate_threshold()
+        output.append({
+            "T": T,
+            "s": s,
+            "SquareDiff": (threshold-ystar)**2
+        })
+    return output
+
 sims = 50
 Ts = [100*i for i in range(1,21)]
 
-result = Parallel(n_jobs=7)(delayed(simulate_KL)(T, sims, diffPros, dataStrat) for T in Ts)
+result = Parallel(n_jobs=7)(delayed(simulate_threshold_estimation)(T, sims, diffPros, opStrat.y_star, dataStrat) for T in Ts)
 data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/KL2.csv", encoding="utf-8", header=True, index=False)
-
-# sims = 5
-# Ts = [100*i for i in range(1,51)]
-# thresholds = np.linspace(y1, zeta, 7)
+data_df.to_csv(path_or_buf="./SimulationData/ThresholdDiff.csv", encoding="utf-8", header=True, index=False)
 
 def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat, ThresholdStrat):
     output = []
@@ -164,6 +180,10 @@ def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat,
             })
     
     return output
+
+# sims = 5
+# Ts = [100*i for i in range(1,51)]
+# thresholds = np.linspace(y1, zeta, 7)
 
 # result = Parallel(n_jobs=-1)(delayed(simulate_threshold_vs_optimal)(tau, Ts, sims, diffPros, opStrat, thresholdStrat) for tau in thresholds)
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
