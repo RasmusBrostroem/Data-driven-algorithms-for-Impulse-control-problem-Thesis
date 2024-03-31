@@ -11,6 +11,12 @@ def b(x: float, t: float = 0) -> float:
     # return the drift function evaluated at x and t
     return -x/2
 
+def b_linear_generate(C: float, with_intersept: bool = False):
+    if with_intersept:
+        return lambda x: -(C*x - C)
+    else:
+        return lambda x: -C*x
+
 def sigma(x: float, t: float = 0) -> float:
     # return the diffusion coefficient evaluated at x and t
     return 1
@@ -60,9 +66,9 @@ class DiffusionProcess():
 
     def step(self, x: float, t: float, dt: float) -> float:
         if not self.noise is None:
-            return x + self.b(x, t)*dt + self.sigma(x, t)*self.noise[int(t/dt)]
+            return x + self.b(x)*dt + self.sigma(x)*self.noise[int(t/dt)]
         
-        return x + self.b(x, t)*dt + self.sigma(x, t)*np.random.normal(loc=0.0, scale=np.sqrt(dt))
+        return x + self.b(x)*dt + self.sigma(x)*np.random.normal(loc=0.0, scale=np.sqrt(dt))
 
     def getC_b_sigma(self):
         def inner_integral(u):
