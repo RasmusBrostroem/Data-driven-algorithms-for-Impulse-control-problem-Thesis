@@ -127,6 +127,15 @@ class DataDrivenImpulseControl():
     def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
     
+    def MISE_eval(self, diffpros: DiffusionProcess):
+        f = lambda x: (self.pdf_eval_interpolate(x) - diffpros.invariant_density(x))**2
+        return quad(f, self.y1, self.zeta, limit=250, epsrel=1e-3)[0]
+    
+    def KL_eval(self, diffpros: DiffusionProcess):
+        eps = 0.0000001
+        f = lambda x: self.pdf_eval(x)*np.log((self.pdf_eval(x)+eps)/(diffpros.invariant_density(x)+eps))
+        return quad(f, -np.inf, np.inf, limit=250, epsabs=1e-3)[0]
+
     def pdf_eval_interpolate(self, x):
         return self.pdf_evaluated_x(x)
     

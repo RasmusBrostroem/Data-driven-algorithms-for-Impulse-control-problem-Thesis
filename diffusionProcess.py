@@ -26,7 +26,6 @@ class DiffusionProcess():
         self.noise = np.random.normal(loc=0.0, scale=np.sqrt(dt), size=int(T/dt))
         return
 
-
     def EulerMaruymaMethod(self,
                            T: float,
                            dt: float,
