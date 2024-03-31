@@ -14,13 +14,13 @@ import os
 
 import inspect
 
-from diffusionProcess import DiffusionProcess, b, sigma, b_linear_generate
+from diffusionProcess import DiffusionProcess, drift, sigma, b_linear_generate
 from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl, generate_reward_func
 
 
 
 def simulate_optimal_strategy(T=10, dt=0.01):
-    difPros = DiffusionProcess(b, sigma)
+    difPros = DiffusionProcess(drift, sigma)
     optStrat = OptimalStrategy(difPros, reward)
     print(f"Optimal threshold: {optStrat.y_star}")
     t = [0]
@@ -49,7 +49,7 @@ def simulate_optimal_strategy(T=10, dt=0.01):
     return
 
 def plot_uncontrolled_diffusion(T=100, dt=0.01, x0=0):
-    difPros = DiffusionProcess(b, sigma)
+    difPros = DiffusionProcess(drift, sigma)
     x, t = difPros.EulerMaruymaMethod(T, dt, x0)
     plt.plot(t, x)
     plt.xlabel('Time')
@@ -58,7 +58,7 @@ def plot_uncontrolled_diffusion(T=100, dt=0.01, x0=0):
     return
 
 def plot_reward_xi_obj():
-    difPros = DiffusionProcess(b, sigma)
+    difPros = DiffusionProcess(drift, sigma)
     optStrat = OptimalStrategy(difPros, reward)
     y1, zeta = get_y1_and_zeta(g=reward)
     print(f"y1 = {y1} and zeta = {zeta}")
@@ -92,7 +92,7 @@ def plot_reward_xi_obj():
     return
 
 
-diffPros = DiffusionProcess(b=b, sigma=sigma)
+diffPros = DiffusionProcess(b=drift, sigma=sigma)
 opStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
 thresholdStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
 dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
@@ -158,12 +158,12 @@ def simulate_threshold_estimation(T, sims, diffusionProcess: DiffusionProcess, y
         })
     return output
 
-sims = 50
-Ts = [100*i for i in range(1,21)]
+# sims = 50
+# Ts = [100*i for i in range(1,21)]
 
-result = Parallel(n_jobs=7)(delayed(simulate_threshold_estimation)(T, sims, diffPros, opStrat.y_star, dataStrat) for T in Ts)
-data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/ThresholdDiff.csv", encoding="utf-8", header=True, index=False)
+# result = Parallel(n_jobs=7)(delayed(simulate_threshold_estimation)(T, sims, diffPros, opStrat.y_star, dataStrat) for T in Ts)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/ThresholdDiff.csv", encoding="utf-8", header=True, index=False)
 
 def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat, ThresholdStrat):
     output = []
@@ -253,19 +253,19 @@ def simulate_dataDriven_vs_optimal2(rewardPower, Ts, sims, diffusionProcess):
     
     return output
 
-Ts = [100*i for i in range(1,51)]
-Cs = [1/8, 1/4, 1/2, 1, 1.25, 1.5, 1.75, 2]
-sims = 100
+# Ts = [100*i for i in range(1,51)]
+# Cs = [1/8, 1/4, 1/2, 1, 1.25, 1.5, 1.75, 2]
+# sims = 100
 
-result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(C, Ts, sims, opStrat, dataStrat) for C in Cs)
-data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/Drifts/DifferentLinearDrifts.csv", encoding="utf-8", header=True, index=False)
-powers = [1/5, 1/2, 1, 2, 5]
-sims = 100
+# result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(C, Ts, sims, opStrat, dataStrat) for C in Cs)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/Drifts/DifferentLinearDrifts.csv", encoding="utf-8", header=True, index=False)
+# powers = [1/5, 1/2, 1, 2, 5]
+# sims = 100
 
-result = Parallel(n_jobs=5)(delayed(simulate_dataDriven_vs_optimal2)(p, Ts, sims, diffPros) for p in powers)
-data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/RewardFunctions/DataStratDifferentRewards.csv", encoding="utf-8", header=True, index=False)
+# result = Parallel(n_jobs=5)(delayed(simulate_dataDriven_vs_optimal2)(p, Ts, sims, diffPros) for p in powers)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/RewardFunctions/DataStratDifferentRewards.csv", encoding="utf-8", header=True, index=False)
 
 # if __name__ == "__main__":
 #     # plot_uncontrolled_diffusion()

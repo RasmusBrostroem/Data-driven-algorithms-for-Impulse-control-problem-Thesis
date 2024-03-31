@@ -7,7 +7,7 @@ import math
 from mpmath import hyp2f2
 
 # Define the drift function and diffusion coefficient
-def b(x: float, t: float = 0) -> float:
+def drift(x: float, t: float = 0) -> float:
     # return the drift function evaluated at x and t
     return -x/2
 

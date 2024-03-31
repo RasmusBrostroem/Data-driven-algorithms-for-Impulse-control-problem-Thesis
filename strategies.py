@@ -122,7 +122,7 @@ class DataDrivenImpulseControl():
         self.ecdf_fit(data)
         xs = np.linspace(0, self.zeta, int(100*self.zeta))
         pdf_values = np.array([self.pdf_eval(x) for x in xs])
-        self.pdf_evaluated_x = interp1d(xs, pdf_values, kind="linear")
+        self.pdf_evaluated_x = interp1d(xs, pdf_values, kind="linear", assume_sorted=True, bounds_error=False)
     
     def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
         return self.cdf(x)
