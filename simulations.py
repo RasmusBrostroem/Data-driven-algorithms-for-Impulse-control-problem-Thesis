@@ -115,16 +115,16 @@ def simulate_MISE(T, sims, diffusionProcess, dataStrategy):
 sims = 50
 Ts = [100*i for i in range(1,21)]
 
-result = Parallel(n_jobs=7)(delayed(simulate_MISE)(T, sims, diffPros, dataStrat) for T in Ts)
-data_df = pd.DataFrame(list(chain.from_iterable(result)))
-data_df.to_csv(path_or_buf="./SimulationData/MISE3.csv", encoding="utf-8", header=True, index=False)
+# result = Parallel(n_jobs=7)(delayed(simulate_MISE)(T, sims, diffPros, dataStrat) for T in Ts)
+# data_df = pd.DataFrame(list(chain.from_iterable(result)))
+# data_df.to_csv(path_or_buf="./SimulationData/MISE3.csv", encoding="utf-8", header=True, index=False)
 
 def simulate_KL(T, sims, diffusionProcess, dataStrategy):
     output = []
     dataStrategy.bandwidth = 1/np.sqrt(T)
     for s in range(sims):
         data, t = diffusionProcess.EulerMaruymaMethod(T, 0.01, 0)
-        dataStrategy.kernel_fit(data)
+        dataStrategy.fit(data)
         KL = dataStrategy.KL_eval(diffusionProcess)
         output.append({
             "T": T,
