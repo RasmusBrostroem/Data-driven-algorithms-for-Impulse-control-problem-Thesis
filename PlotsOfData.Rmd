@@ -16,12 +16,16 @@ library(stats)
 ```
 
 ```{r}
-setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 thresholdData <- read.csv("./SimulationData/ThresholdData.csv")
 DataStratData <- read.csv("./SimulationData/DataStratIncreasingTData.csv")
 MISEData <- read.csv("./SimulationData/MISE.csv")
 MISEData2 <- read.csv("./SimulationData/MISE2.csv")
+MISEData3 <- read.csv("./SimulationData/MISE3.csv")
 KLData <- read.csv("./SimulationData/KL.csv")
+KLData2 <- read.csv("./SimulationData/KL2.csv")
+thresholdDiffData <- read.csv("./SimulationData/ThresholdDiff.csv")
 ```
 
 
@@ -122,17 +126,23 @@ avgMiseData <- MISEData %>% group_by(T) %>% summarise(avgMise = mean(MISE),
 avgMiseData2 <- MISEData2 %>% group_by(T) %>% summarise(avgMise = mean(MISE),
                                                       sdMise = sd(MISE),
                                                       .groups = "drop")
+avgMiseData3 <- MISEData3 %>% group_by(T) %>% summarise(avgMise = mean(MISE),
+                                                      sdMise = sd(MISE),
+                                                      .groups = "drop")
 ```
 
 
 ```{r}
-ggplot(avgMiseData2, aes(x=T, y=avgMise))+
+ggplot(avgMiseData3, aes(x=T, y=avgMise))+
   geom_line()
 ```
 
 # KL Data plot
 ```{r}
 avgKLData <- KLData %>% group_by(T) %>% summarise(avgKL = mean(KL),
+                                                  sdKL = sd(KL),
+                                                  .groups = "drop")
+avgKLData2 <- KLData2 %>% group_by(T) %>% summarise(avgKL = mean(KL),
                                                   sdKL = sd(KL),
                                                   .groups = "drop")
 ```
@@ -143,8 +153,19 @@ ggplot(avgKLData, aes(x=T, y=avgKL))+
 ```
 
 ```{r}
-ggplot(KLData, aes(x=T, y=KL))+
+ggplot(KLData2, aes(x=T, y=KL))+
   geom_point()
 ```
 
+# Threshold difference between optimal and estimated
+```{r}
+avgThresholdDiff <- thresholdDiffData %>% group_by(T) %>%  summarise(avgDiff = mean(SquareDiff),
+                                                                     sdDiff = sd(SquareDiff),
+                                                                     .groups = "drop")
+```
+
+```{r}
+ggplot(avgThresholdDiff, aes(x=T, y=avgDiff))+
+  geom_line()
+```
 
