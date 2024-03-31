@@ -1,5 +1,5 @@
 from scipy.integrate import odeint, quad
-from diffusionProcess import b, sigma, DiffusionProcess
+from diffusionProcess import drift, sigma, DiffusionProcess, b_linear_generate
 from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func
 from time import time
 import numpy as np
@@ -33,57 +33,126 @@ def time_function(func, args_list, repetitions=10):
     average_time = total_time / repetitions
     return average_time
 
-T = 100
+# def simulate_dataDriven_vs_optimal2(rewardPower, Ts, sims, diffusionProcess):
+#     output = []
+#     r = generate_reward_func(power=rewardPower)
+#     OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=r)
+#     DataStrat = DataDrivenImpulseControl(rewardFunc=r, sigma=sigma)
+#     for T in Ts:
+#         DataStrat.bandwidth = 1/np.sqrt(T)
+#         for s in range(sims):
+#             diffusionProcess.generate_noise(T, 0.01)
+#             dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+#             opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
 
-diffPros = DiffusionProcess(b=b, sigma=sigma)
-opStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
-dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
-dataStrat.bandwidth = 1/np.sqrt(T)
-
-data, t = diffPros.EulerMaruymaMethod(T, 0.01, 0)
-
-r = generate_reward_func(5)
-
-def plot_reward_xi_obj():
-    difPros = DiffusionProcess(b, sigma)
-    optStrat = OptimalStrategy(difPros, r)
-    y1, zeta = get_y1_and_zeta(g=r)
-    print(f"y1 = {y1} and zeta = {zeta}")
-
-    y = np.linspace(y1, zeta*2, 100)
-    gs = r(y)
-
-    xis = difPros.xi(y)
-    xis_theo = difPros.xi_theoretical(y)
-
-    vals = gs/xis
-
-    y_star = optStrat.get_optimal_threshold()
-
-    plt.plot(y, gs)
-    plt.title("Reward function")
-    plt.show()
-
-    fig, (ax1, ax2) = plt.subplots(1,2)
-    fig.suptitle("Expected time before reaching value")
-    ax1.plot(y,xis)
-    ax1.set_title("Calculated xi")
-    ax2.plot(y,xis_theo)
-    ax2.set_title("Theoretical xi")
-    plt.show()
-
-    print(f"Optimal threshold = {y_star}")
-    plt.plot(y, vals)
-    plt.title("Objective function")
-    plt.show()
-    return
+#             output.append({
+#                 "Drift": inspect.getsource(diffusionProcess.b),
+#                 "Sigma": inspect.getsource(diffusionProcess.sigma),
+#                 "rewardFunc": inspect.getsource(r),
+#                 "rewardPower": rewardPower,
+#                 "T": T,
+#                 "simNr": s,
+#                 "kernel": DataStrat.kernel_method,
+#                 "bandwidth": "1/sqrt(T)",
+#                 "a": DataStrat.a,
+#                 "M1": DataStrat.M1,
+#                 "S_T": S_T,
+#                 "data_reward": dataReward,
+#                 "optimal_reward": opt_reward,
+#                 "regret": opt_reward-dataReward
+#             })
+    
+#     return output
 
 
-print(f"reward at 0 = {r(0)}")
+# diffPros = DiffusionProcess(b=drift, sigma=sigma)
 
-#plot_reward_xi_obj()
+# cProfile.run("simulate_dataDriven_vs_optimal2(2, [100, 200, 300], 50, diffPros)", sort="cumtime")
 
-print(inspect.getsource(r))
+
+
+# T = 100
+
+# b = b_linear_generate(1/3, True)
+
+# diffPros = DiffusionProcess(b=b, sigma=sigma)
+# opStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
+# dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
+# dataStrat.bandwidth = 1/np.sqrt(T)
+
+# #data, t = diffPros.EulerMaruymaMethod(T, 0.01, 0)
+
+# r = generate_reward_func(1/2)
+
+
+# def plot_reward_xi_obj():
+#     difPros = DiffusionProcess(b, sigma)
+#     optStrat = OptimalStrategy(difPros, r)
+#     y1, zeta = get_y1_and_zeta(g=r)
+#     print(f"y1 = {y1} and zeta = {zeta}")
+
+#     y = np.linspace(y1, zeta*2, 100)
+#     gs = r(y)
+
+#     xis = difPros.xi(y)
+#     #xis_theo = difPros.xi_theoretical(y)
+
+#     vals = gs/xis
+
+#     y_star = optStrat.get_optimal_threshold()
+
+#     plt.plot(y, gs)
+#     plt.title("Reward function")
+#     plt.show()
+
+#     # fig, (ax1, ax2) = plt.subplots(1,2)
+#     # fig.suptitle("Expected time before reaching value")
+#     # ax1.plot(y,xis)
+#     # ax1.set_title("Calculated xi")
+#     # ax2.plot(y,xis_theo)
+#     # ax2.set_title("Theoretical xi")
+#     plt.plot(y, xis)
+#     plt.title("Expected hitting times")
+#     plt.show()
+
+#     print(f"Optimal threshold = {y_star}")
+#     plt.plot(y, vals)
+#     plt.title("Objective function")
+#     plt.show()
+#     return
+
+
+# print(f"reward at 0 = {r(0)}")
+
+# plot_reward_xi_obj()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #run = neptune.init_run(project='rasmusbrostroem/DiffusionControl')
 # def simulate_dataDriven_vs_optimal(T, sims):
 #     run = neptune.init_run(project='rasmusbrostroem/DiffusionControl')
@@ -125,57 +194,11 @@ print(inspect.getsource(r))
 #         #     "regret": opt_reward-dataReward
 #         # })
 
-# Ts = [100*i for i in range(1,6)]
-# sims = 10
-# diffPros.generate_noise(T, 0.01)
-
-# start = time()
-# r, S_T = dataStrat.simulate(diffPros, T, 0.01)
-# t1 = time()
-# r1, S_T1 = dataStrat.simulate_new(diffPros, T, 0.01)
-# t2 = time()
-# r2, S_T2 = dataStrat.simulate_new_new(diffPros, T, 0.01)
-# end = time()
-
-# print(f"Original simulation took = {t1-start} with reward {r} and exploration time {S_T}")
-# print(f"New simulation took = {t2-t1} with reward {r1} and exploration time {S_T1}")
-# print(f"New New simulation took = {end-t2} with reward {r2} and exploration time {S_T2}")
-
-
-# cProfile.run("dataStrat.estimate_threshold()", sort="cumtime")
-
-# cProfile.run("dataStrat.estimate_threshold_new()", sort="cumtime")
 
 
 
 
 
-
-# start = time()
-# dataStrat.pdf_eval(xs)
-# print(f"vector based evaluation = {time()-start}")
-
-
-
-
-
-#cProfile.run("dataStrat.estimate_threshold()", sort="cumtime")
-
-
-
-# start = time()
-# diffPros.generate_noise(5000, 0.01)
-# t = 0
-# dt = 0.01
-# x = 0
-# while t <= 5000:
-#     x = diffPros.step(x, t, dt)
-#     t += dt
-# # for i in range(10):
-# #     x, t = diffPros.EulerMaruymaMethod(T=100, dt=0.01, x0=0)
-# #     dataStrat.fit(x)
-# #     dataStrat.estimate_threshold()
-# print(f"Data simulation took {time()-start} seconds")
 
 
 
