@@ -2,24 +2,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Callable, Union
 from scipy.optimize import minimize_scalar, fsolve
-from scipy.integrate import quad, nquad, dblquad
+from scipy.integrate import quad
+from scipy.interpolate import interp1d
 from functools import partial
 from collections.abc import Iterable
-import math
 from mpmath import hyp2f2
-from sklearn.neighbors import KernelDensity
-from sklearn.model_selection import GridSearchCV
 from statsmodels.nonparametric.kde import KDEUnivariate
-from scipy.stats import ecdf
+from statsmodels.distributions.empirical_distribution import ECDF
 from collections.abc import Iterable
-
-from functools import lru_cache
 
 from diffusionProcess import DiffusionProcess
 
 
 def reward(x):
-    return 1/2 - np.abs(1-x)**2
+    return 9/10 - np.abs(1-x)**(5)
     # return 10 - np.abs(4-3*x)**2
 
 def generate_reward_func(power):
@@ -92,6 +88,9 @@ class DataDrivenImpulseControl():
         self.kde = None
         self.cdf = None
 
+        self.xi_evaluated_x = {}
+        self.pdf_evaluated_x = None
+
     def update_attributes_on_kwargs(self, **kwargs):
         # Get a list of all predefined attributes
         allowed_keys = list(self.__dict__.keys())
@@ -105,43 +104,68 @@ class DataDrivenImpulseControl():
         rejected_keys = set(kwargs.keys()) - set(allowed_keys)
         if rejected_keys:
             raise ValueError("Invalid arguments in constructor:{}".format(rejected_keys))
-    
 
+    def clear_cache(self):
+        self.xi_evaluated_x.clear()
+        self.pdf_evaluated_x = None
+    
     def kernel_fit(self, data: list[float]) -> None:
         self.kde = KDEUnivariate(data)
         self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth)
 
     def ecdf_fit(self, data: list[float]) -> None:
-        res = ecdf(sample=data)
-        self.cdf = res.cdf
+        self.cdf = ECDF(data)
 
     def fit(self, data: list[float]) -> None:
+        self.clear_cache()
         self.kernel_fit(data)
         self.ecdf_fit(data)
+        xs = np.linspace(0, self.zeta, int(100*self.zeta))
+        pdf_values = np.array([self.pdf_eval(x) for x in xs])
+        self.pdf_evaluated_x = interp1d(xs, pdf_values, kind="linear")
     
     def cdf_eval(self, x: Union[list[float], float]) -> Union[list[float], float]:
-        return self.cdf.evaluate(x)
+        return self.cdf(x)
     
     def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
     
     def MISE_eval(self, diffpros: DiffusionProcess):
-        f = lambda x: (self.pdf_eval(x) - diffpros.invariant_density(x))**2
-        return quad(f, -np.inf, np.inf, limit=250, epsrel=1e-8)[0]
+        f = lambda x: (self.pdf_eval_interpolate(x) - diffpros.invariant_density(x))**2
+        return quad(f, self.y1, self.zeta, limit=250, epsrel=1e-3)[0]
     
     def KL_eval(self, diffpros: DiffusionProcess):
         eps = 0.0000001
         f = lambda x: self.pdf_eval(x)*np.log((self.pdf_eval(x)+eps)/(diffpros.invariant_density(x)+eps))
         return quad(f, -np.inf, np.inf, limit=250, epsabs=1e-3)[0]
 
+    def pdf_eval_interpolate(self, x):
+        return self.pdf_evaluated_x(x)
+    
     def xi_eval(self, x):
-        f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval(y), self.a)*self.sigma(y)**2)
-        xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-3)[0]
+        f = lambda y: self.cdf_eval(y)/(max(self.pdf_eval_interpolate(y), self.a)*self.sigma(y)**2)
+
+        if not self.xi_evaluated_x:
+            xi_estimate = 2*quad(f, 0, x, limit=250, epsabs=1e-2)[0]
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+
+        closest_x_evaluated, xi_val = min(self.xi_evaluated_x.items(), key=lambda y: abs(x - y[0]))
+
+        if closest_x_evaluated <= x:
+            xi_estimate = xi_val + 2*quad(f, closest_x_evaluated, x, limit=250, epsabs=1e-2)[0] 
+            
+            self.xi_evaluated_x[x] = xi_estimate
+            return np.maximum(xi_estimate, self.M1)
+        
+        xi_estimate = xi_val - 2*quad(f, x, closest_x_evaluated, limit=250, epsabs=1e-2)[0] 
+        
+        self.xi_evaluated_x[x] = xi_estimate
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-4})
+        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-2})
         return result.x
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
@@ -156,6 +180,7 @@ class DataDrivenImpulseControl():
         exploring = True
         threshold = None
         cumulativeReward = 0
+        thresholds = []
 
         while t < T:
             if exploring:
@@ -167,6 +192,7 @@ class DataDrivenImpulseControl():
             if reachedZeta and X <= 0:
                 self.fit(data)
                 threshold = self.estimate_threshold()
+                thresholds.append(threshold)
                 exploring = False
                 reachedZeta = False
             
@@ -178,7 +204,7 @@ class DataDrivenImpulseControl():
             
             X = diffpros.step(X, t, dt)
             t += dt
-        
+
         return cumulativeReward, S_t
 
 if __name__ == "__main__":

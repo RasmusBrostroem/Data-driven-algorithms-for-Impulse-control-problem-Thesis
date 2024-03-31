@@ -58,22 +58,7 @@ class DiffusionProcess():
 
         return x, t
 
-    def step(self,
-             x: float,
-             t: float,
-             dt: float) -> float:
-        """_summary_
-
-        Args:
-            b (Callable[[float, float], float]): _description_
-            sigma (Callable[[float, float], float]): _description_
-            x (float): _description_
-            t (float): _description_
-            dt (float): _description_
-
-        Returns:
-            float: _description_
-        """
+    def step(self, x: float, t: float, dt: float) -> float:
         if not self.noise is None:
             return x + self.b(x, t)*dt + self.sigma(x, t)*self.noise[int(t/dt)]
         
