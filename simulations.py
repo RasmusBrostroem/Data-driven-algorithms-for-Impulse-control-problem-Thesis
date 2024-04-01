@@ -9,8 +9,12 @@ from joblib import Parallel, delayed
 
 import inspect
 
+import neptune
+
 import warnings
 import os
+
+from itertools import product
 
 import inspect
 
@@ -57,35 +61,58 @@ def plot_uncontrolled_diffusion(T=100, dt=0.01, x0=0):
     plt.show()
     return
 
-def plot_reward_xi_obj():
-    difPros = DiffusionProcess(drift, sigma)
-    optStrat = OptimalStrategy(difPros, reward)
-    y1, zeta = get_y1_and_zeta(g=reward)
+def plot_reward_xi_obj(C, A, power, zeroVal):
+    driftFunc = generate_linear_drift(C, A)
+    rewardFunc = generate_reward_func(power, zeroVal)
+    sigmaFunc = sigma
+    print("Starting")
+    difPros = DiffusionProcess(driftFunc, sigmaFunc)
+    print("Diffusion initialized")
+    optStrat = OptimalStrategy(difPros, rewardFunc)
+    print("OP strat initialized")
+    y1, zeta = get_y1_and_zeta(g=rewardFunc)
     print(f"y1 = {y1} and zeta = {zeta}")
 
-    y = np.linspace(y1, zeta*2, 20)
-    gs = reward(y)
+    y = np.linspace(y1-0.00001, zeta*2, 100)
+    gs = rewardFunc(y)
 
+    bs = np.fromiter(map(driftFunc,y), dtype=float)
+
+    absDrift = np.abs(bs)
+    driftLine = C*(1+np.abs(y))
+    driftY = np.linspace(-A-1, A+1, 100)
+    drifs = np.fromiter(map(driftFunc, driftY), dtype=float)
+    sgnDrift = (drifs/sigma(driftY)**2)*np.sign(driftY)
+    print("Done with drift calculations")
     xis = difPros.xi(y)
-    xis_theo = difPros.xi_theoretical(y)
-
+    print("Done with xis")
     vals = gs/xis
 
-    y_star = optStrat.get_optimal_threshold()
+    y_star = optStrat.y_star
+    print(f"Optimal threshold = {y_star}")
+
+    plt.plot(y, absDrift, label = "Absolute drift")
+    plt.plot(y, driftLine, label = "Drift Line under")
+    plt.legend()
+    plt.title("First condition on drift")
+    plt.show()
+
+    plt.plot(driftY, sgnDrift)
+    plt.title("Second condition on drift")
+    plt.show()
+
+    plt.plot(y, bs)
+    plt.title("Drift function from y1 to 2*zeta")
+    plt.show()
 
     plt.plot(y, gs)
     plt.title("Reward function")
     plt.show()
 
-    fig, (ax1, ax2) = plt.subplots(1,2)
-    fig.suptitle("Expected time before reaching value")
-    ax1.plot(y,xis)
-    ax1.set_title("Calculated xi")
-    ax2.plot(y,xis_theo)
-    ax2.set_title("Theoretical xi")
+    plt.plot(y, xis)
+    plt.title("Expected hitting times")
     plt.show()
 
-    print(f"Optimal threshold = {y_star}")
     plt.plot(y, vals)
     plt.title("Objective function")
     plt.show()
@@ -98,7 +125,7 @@ thresholdStrat = OptimalStrategy(diffusionProcess=diffPros, rewardFunc=reward)
 dataStrat = DataDrivenImpulseControl(rewardFunc=reward, sigma=sigma)
 
 
-y1, zeta = get_y1_and_zeta(reward)
+#y1, zeta = get_y1_and_zeta(reward)
 
 def simulate_MISE(T, sims, diffusionProcess, dataStrategy):
     output = []
@@ -193,69 +220,161 @@ def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat,
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
 # data_df.to_csv(path_or_buf="./SimulationData/ThresholdData.csv", encoding="utf-8", header=True, index=False)
 
-def simulate_dataDriven_vs_optimal(C, Ts, sims, OptimalStrat, DataStrat):
-    output = []
-    for intersept in [True, False]:
-        diffusionProcess = DiffusionProcess(b=generate_linear_drift(C, intersept), sigma=sigma)
+# def simulate_dataDriven_vs_optimal(C, Ts, sims, OptimalStrat, DataStrat):
+#     output = []
+#     for intersept in [True, False]:
+#         diffusionProcess = DiffusionProcess(b=generate_linear_drift(C, intersept), sigma=sigma)
+#         for T in Ts:
+#             DataStrat.bandwidth = 1/np.sqrt(T)
+#             for s in range(sims):
+#                 diffusionProcess.generate_noise(T, 0.01)
+#                 dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+#                 opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+
+#                 output.append({
+#                     "rewardFunc": inspect.getsource(DataStrat.g),
+#                     "sigmaFunc": inspect.getsource(diffusionProcess.sigma),
+#                     "driftFunc": inspect.getsource(diffusionProcess.b),
+#                     "T": T,
+#                     "simNr": s,
+#                     "C": C,
+#                     "intercept": intersept,
+#                     "kernel": DataStrat.kernel_method,
+#                     "bandwidth": "1/sqrt(T)",
+#                     "a": DataStrat.a,
+#                     "M1": DataStrat.M1,
+#                     "S_T": S_T,
+#                     "data_reward": dataReward,
+#                     "optimal_reward": opt_reward,
+#                     "regret": opt_reward-dataReward
+#                 })
+
+# def simulate_dataDriven_vs_optimal2(rewardPower, Ts, sims, diffusionProcess):
+#     output = []
+#     r = generate_reward_func(power=rewardPower)
+#     OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=r)
+#     DataStrat = DataDrivenImpulseControl(rewardFunc=r, sigma=sigma)
+#     for T in Ts:
+#         DataStrat.bandwidth = 1/np.sqrt(T)
+#         for s in range(sims):
+#             diffusionProcess.generate_noise(T, 0.01)
+#             dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+#             opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+
+#             output.append({
+#                 "Drift": inspect.getsource(diffusionProcess.b),
+#                 "Sigma": inspect.getsource(diffusionProcess.sigma),
+#                 "rewardFunc": inspect.getsource(r),
+#                 "rewardPower": rewardPower,
+#                 "T": T,
+#                 "simNr": s,
+#                 "kernel": DataStrat.kernel_method,
+#                 "bandwidth": "1/sqrt(T)",
+#                 "a": DataStrat.a,
+#                 "M1": DataStrat.M1,
+#                 "S_T": S_T,
+#                 "data_reward": dataReward,
+#                 "optimal_reward": opt_reward,
+#                 "regret": opt_reward-dataReward
+#             })
+    
+#     return output
+
+def simulate_dataDriven_vs_optimal(Ts,
+                                   sims,
+                                   C,
+                                   A,
+                                   power,
+                                   zeroVal,
+                                   a=0.000001,
+                                   M1=0.000001,
+                                   kernel_method="gau",
+                                   bandwidth_func = lambda T: 1/np.sqrt(T)):
+    
+    driftFunc = generate_linear_drift(C, A)
+    rewardFunc = generate_reward_func(power, zeroVal)
+    sigmaFunc = sigma
+    run = neptune.init_run(project='rasmusbrostroem/DiffusionControl')
+    runId = run["sys/id"].fetch()
+    diffusionProcess = DiffusionProcess(b=driftFunc, sigma=sigmaFunc)
+    OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=rewardFunc)
+    DataStrat = DataDrivenImpulseControl(rewardFunc=rewardFunc, sigma=sigmaFunc)
+    DataStrat.a = a
+    DataStrat.M1 = M1
+    DataStrat.kernel_method = kernel_method
+
+    run["AlgoParams"] = {
+        "kernelMethod": DataStrat.kernel_method,
+        "bandwidthMethod": inspect.getsource(bandwidth_func),
+        "a": DataStrat.a,
+        "M1": DataStrat.M1
+    }
+
+    run["ModelParams"] = {
+        "driftFunc": inspect.getsource(diffusionProcess.b),
+        "C": C,
+        "A": A,
+        "diffusionCoef": inspect.getsource(diffusionProcess.sigma),
+        "rewardFunc": inspect.getsource(DataStrat.g),
+        "power": power,
+        "zeroVal": zeroVal,
+        "y_star": OptimalStrat.y_star,
+        "y1": DataStrat.y1,
+        "zeta": DataStrat.zeta
+    }
+
+    for s in range(sims):
+        run[f"Metrics/Sim{s}/T"].extend(values=Ts)
+        run[f"Metrics/Sim{s}/simNr"].extend(values=[s for _ in Ts])
+        S_Ts = []
+        dataRewards = []
+        optRewards = []
+        regrets = []
         for T in Ts:
-            DataStrat.bandwidth = 1/np.sqrt(T)
-            for s in range(sims):
-                diffusionProcess.generate_noise(T, 0.01)
-                dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
-                opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
-
-                output.append({
-                    "rewardFunc": inspect.getsource(DataStrat.g),
-                    "sigmaFunc": inspect.getsource(diffusionProcess.sigma),
-                    "driftFunc": inspect.getsource(diffusionProcess.b),
-                    "T": T,
-                    "simNr": s,
-                    "C": C,
-                    "intercept": intersept,
-                    "kernel": DataStrat.kernel_method,
-                    "bandwidth": "1/sqrt(T)",
-                    "a": DataStrat.a,
-                    "M1": DataStrat.M1,
-                    "S_T": S_T,
-                    "data_reward": dataReward,
-                    "optimal_reward": opt_reward,
-                    "regret": opt_reward-dataReward
-                })
-
-def simulate_dataDriven_vs_optimal2(rewardPower, Ts, sims, diffusionProcess):
-    output = []
-    r = generate_reward_func(power=rewardPower)
-    OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=r)
-    DataStrat = DataDrivenImpulseControl(rewardFunc=r, sigma=sigma)
-    for T in Ts:
-        DataStrat.bandwidth = 1/np.sqrt(T)
-        for s in range(sims):
+            DataStrat.bandwidth = bandwidth_func(T)
             diffusionProcess.generate_noise(T, 0.01)
-            dataReward, S_T = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            dataReward, S_T, thresholds_and_Sts = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            if len(thresholds_and_Sts) >= 1:
+                thresholds, Sts = zip(*thresholds_and_Sts)
+                if len(thresholds) == 1:
+                    run[f"Metrics/Sim{s}/Thresholds/{T}"].append(value=thresholds[0], step=Sts[0])
+                else:
+                    run[f"Metrics/Sim{s}/Thresholds/{T}"].extend(values=thresholds, steps=Sts)
+
             opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
 
-            output.append({
-                "Drift": inspect.getsource(diffusionProcess.b),
-                "Sigma": inspect.getsource(diffusionProcess.sigma),
-                "rewardFunc": inspect.getsource(r),
-                "rewardPower": rewardPower,
-                "T": T,
-                "simNr": s,
-                "kernel": DataStrat.kernel_method,
-                "bandwidth": "1/sqrt(T)",
-                "a": DataStrat.a,
-                "M1": DataStrat.M1,
-                "S_T": S_T,
-                "data_reward": dataReward,
-                "optimal_reward": opt_reward,
-                "regret": opt_reward-dataReward
-            })
+            #run[f"Metrics/Sim{s}/T"].append(value=T)
+            #run[f"Metrics/Sim{s}/simNr"].append(value=s)
+            #run[f"Metrics/Sim{s}/S_T"].append(value=S_T, step=T)
+            #run[f"Metrics/Sim{s}/dataDriveReward"].append(value=dataReward, step=T)
+            #run[f"Metrics/Sim{s}/OptimalStratReward"].append(value=opt_reward, step=T)
+            #run[f"Metrics/Sim{s}/regret"].append(value=opt_reward-dataReward, step=T)
+            S_Ts.append(S_T)
+            dataRewards.append(dataReward)
+            optRewards.append(opt_reward)
+            regrets.append(opt_reward-dataReward)
+        
+        run[f"Metrics/Sim{s}/S_T"].extend(values=S_Ts, steps=Ts)
+        run[f"Metrics/Sim{s}/dataDriveReward"].extend(values=dataRewards, steps=Ts)
+        run[f"Metrics/Sim{s}/OptimalStratReward"].extend(values=optRewards, steps=Ts)
+        run[f"Metrics/Sim{s}/regret"].extend(values=regrets, steps=Ts)
     
-    return output
+    run.stop()
 
-# Ts = [100*i for i in range(1,51)]
-# Cs = [1/8, 1/4, 1/2, 1, 1.25, 1.5, 1.75, 2]
-# sims = 100
+
+
+
+
+Ts = [100*i for i in range(1,51)]
+sims = 50
+powers = [1/2, 1, 2, 5]
+zeroVals = [1/10, 7/10, 45/50, 99/100]
+Cs = [1/100, 1/2, 1, 4]
+As = [0]
+argList = list(product(Cs, As, powers, zeroVals))[16:]
+
+#simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
+Parallel(n_jobs=11)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
 
 # result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(C, Ts, sims, opStrat, dataStrat) for C in Cs)
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
