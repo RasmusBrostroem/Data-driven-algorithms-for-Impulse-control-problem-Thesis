@@ -14,6 +14,7 @@ from scipy.integrate import quad
 from sklearn.neighbors import KernelDensity
 from statsmodels.nonparametric.kde import KDEUnivariate
 import inspect
+from itertools import product
 
 def time_function(func, args_list, repetitions=10):
     total_time = 0
@@ -26,49 +27,32 @@ def time_function(func, args_list, repetitions=10):
     return average_time
 
 
-def simulate_dataDriven_vs_optimal(Ts, sims, driftFunc, sigmaFunc, rewardFunc):
-    run = neptune.init_run(project='rasmusbrostroem/DiffusionControl')
-    runId = run["sys/id"].fetch()
-    diffusionProcess = DiffusionProcess(b=driftFunc, sigma=sigmaFunc)
-    OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=rewardFunc)
-    DataStrat = DataDrivenImpulseControl(rewardFunc=rewardFunc, sigma=sigmaFunc)
+powers = [1/2, 1, 2, 5]
+zeroVals = [1/10, 7/10, 45/50, 99/100]
+Cs = [1/100, 1/2, 1, 4]
+As = [0]
+argList = list(product(Cs, As, powers, zeroVals))[16:]
 
-    run["AlgoParams"] = {
-        "kernelMethod": DataStrat.kernel_method,
-        "bandwidthMethod": "1/sqrt(T)",
-        "a": DataStrat.a,
-        "M1": DataStrat.M1
-    }
 
-    run["ModelParams"] = {
-        "driftFunc": inspect.getsource(diffusionProcess.b),
-        "diffusionCoef": inspect.getsource(diffusionProcess.sigma),
-        "rewardFunc": inspect.getsource(DataStrat.g),
-        "y_star": OptimalStrat.y_star,
-        "y1": DataStrat.y1,
-        "zeta": DataStrat.zeta
-    }
+print(argList)
 
-    for s in range(sims):
-        for T in Ts:
-            DataStrat.bandwidth = 1/np.sqrt(T)
-            diffusionProcess.generate_noise(T, 0.01)
-            dataReward, S_T, thresholds_and_t = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
-            if len(thresholds_and_t) >= 1:
-                thresholds, ts = zip(*thresholds_and_t)
-                if len(thresholds) == 1:
-                    run[f"Metrics/Sim{s}/Thresholds/{T}"].append(values=thresholds, steps=ts)
-                else:
-                    run[f"Metrics/Sim{s}/Thresholds/{T}"].extend(values=thresholds, steps=ts)
-            opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+# d = generate_linear_drift(1/2, 0)
+# r = generate_reward_func(1, 7/10)
+# diffPros = DiffusionProcess(d, sigma)
+# opStrat = OptimalStrategy(diffPros, r)
+# dataStrat = DataDrivenImpulseControl(r, sigma)
 
-            run[f"Metrics/Sim{s}/T"].append(value=T)
-            run[f"Metrics/Sim{s}/simNr"].append(value=s)
-            run[f"Metrics/Sim{s}/S_T"].append(value=S_T, step=T)
-            run[f"Metrics/Sim{s}/dataDriveReward"].append(value=dataReward, step=T)
-            run[f"Metrics/Sim{s}/OptimalStratReward"].append(value=opt_reward, step=T)
-            run[f"Metrics/Sim{s}/regret"].append(value=opt_reward-dataReward, step=T)
+# T = 1000
+# dataStrat.bandwidth = 1/np.sqrt(T)
 
+# data, t = diffPros.EulerMaruymaMethod(T, 0.01, 0)
+# print(f"Optimal threshold = {opStrat.y_star}")
+
+# dataStrat.fit(data)
+
+# y_est = dataStrat.estimate_threshold()
+
+# print(f"Estimated threshold = {y_est}")
 
 
 # Ts = [100*i for i in range(1,3)]
@@ -104,58 +88,7 @@ def simulate_dataDriven_vs_optimal(Ts, sims, driftFunc, sigmaFunc, rewardFunc):
 # r = generate_reward_func(1/2)
 
 
-def plot_reward_xi_obj(C, A, power, zeroVal):
-    driftFunc = generate_linear_drift(C, A)
-    rewardFunc = generate_reward_func(power, zeroVal)
-    sigmaFunc = sigma
-    difPros = DiffusionProcess(driftFunc, sigmaFunc)
-    optStrat = OptimalStrategy(difPros, rewardFunc)
-    y1, zeta = get_y1_and_zeta(g=rewardFunc)
-    print(f"y1 = {y1} and zeta = {zeta}")
 
-    y = np.linspace(y1, zeta*2, 100)
-    gs = rewardFunc(y)
-
-    bs = np.fromiter(map(driftFunc,y), dtype=float)
-
-    absDrift = np.abs(bs)
-    driftLine = C*(1+np.abs(y))
-    driftY = np.linspace(-A-1, A+1, 100)
-    drifs = np.fromiter(map(driftFunc, driftY), dtype=float)
-    sgnDrift = (drifs/sigma(driftY)**2)*np.sign(driftY)
-
-    xis = difPros.xi(y)
-    vals = gs/xis
-
-    y_star = optStrat.get_optimal_threshold()
-    print(f"Optimal threshold = {y_star}")
-
-    plt.plot(y, absDrift, label = "Absolute drift")
-    plt.plot(y, driftLine, label = "Drift Line under")
-    plt.legend()
-    plt.title("First condition on drift")
-    plt.show()
-
-    plt.plot(driftY, sgnDrift)
-    plt.title("Second condition on drift")
-    plt.show()
-
-    plt.plot(y, bs)
-    plt.title("Drift function from y1 to 2*zeta")
-    plt.show()
-
-    plt.plot(y, gs)
-    plt.title("Reward function")
-    plt.show()
-
-    plt.plot(y, xis)
-    plt.title("Expected hitting times")
-    plt.show()
-
-    plt.plot(y, vals)
-    plt.title("Objective function")
-    plt.show()
-    return
 
 
 # r = generate_reward_func(2, 99/100)
@@ -164,11 +97,13 @@ def plot_reward_xi_obj(C, A, power, zeroVal):
 # print(f"y1 = {y1}")
 # print(f"zeta = {zeta}")
 
-plot_reward_xi_obj(10, 1/10, 2, 99/100)
+#plot_reward_xi_obj(1, 0.75, 2, 7/10)
 
 # print(f"reward at 0 = {r(0)}")
 
 # plot_reward_xi_obj()
+
+
 
 
 
