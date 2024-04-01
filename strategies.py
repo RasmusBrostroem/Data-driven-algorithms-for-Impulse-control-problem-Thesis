@@ -24,7 +24,6 @@ def generate_reward_func(power: float, zeroVal: float):
 def get_y1_and_zeta(g):
     eps = 0
     roots = fsolve(g, [0, 2, 10])
-    print(roots)
     f1 = lambda y: y if g(y) > 0 else np.inf
     result = minimize_scalar(f1, bounds=(0, max(roots)+eps), method="bounded", options={'xatol': 1e-8})
     y1 = result.x
@@ -184,7 +183,7 @@ class DataDrivenImpulseControl():
         exploring = True
         threshold = None
         cumulativeReward = 0
-        thresholds_and_t = []
+        thresholds_and_Sts = []
 
         while t < T:
             if exploring:
@@ -196,7 +195,7 @@ class DataDrivenImpulseControl():
             if reachedZeta and X <= 0:
                 self.fit(data)
                 threshold = self.estimate_threshold()
-                thresholds_and_t.append((threshold,t))
+                thresholds_and_Sts.append((threshold,S_t))
                 exploring = False
                 reachedZeta = False
             
@@ -209,7 +208,7 @@ class DataDrivenImpulseControl():
             X = diffpros.step(X, t, dt)
             t += dt
 
-        return cumulativeReward, S_t, thresholds_and_t
+        return cumulativeReward, S_t, thresholds_and_Sts
 
 if __name__ == "__main__":
     pass
