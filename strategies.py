@@ -11,23 +11,25 @@ from statsmodels.nonparametric.kde import KDEUnivariate
 from statsmodels.distributions.empirical_distribution import ECDF
 from collections.abc import Iterable
 
-from diffusionProcess import DiffusionProcess
+from diffusionProcess import DiffusionProcess, sigma, generate_linear_drift
 
 
 def reward(x):
     return 9/10 - np.abs(1-x)**(5)
     # return 10 - np.abs(4-3*x)**2
 
-def generate_reward_func(power):
-    return lambda x: 7/10 - np.abs(1-x)**power
+def generate_reward_func(power: float, zeroVal: float):
+    return lambda x: zeroVal - np.abs(1-x)**power
 
 def get_y1_and_zeta(g):
-    roots = fsolve(g, [0, 10])
-    f = lambda y: y if reward(y) > 0 else np.inf
-    result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
+    eps = 0
+    roots = fsolve(g, [0, 2, 10])
+    print(roots)
+    f1 = lambda y: y if g(y) > 0 else np.inf
+    result = minimize_scalar(f1, bounds=(0, max(roots)+eps), method="bounded", options={'xatol': 1e-8})
     y1 = result.x
-    f = lambda y: -reward(y) if reward(y) > 0 else np.inf
-    result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
+    f2 = lambda y: -g(y) if g(y) > 0 else np.inf
+    result = minimize_scalar(f2, bounds=(0, max(roots)+eps), method="bounded", options={'xatol': 1e-8})
     zeta = result.x
 
     return y1, zeta
@@ -42,9 +44,10 @@ class OptimalStrategy():
         self.reward = 0
 
     def get_optimal_threshold(self):
+        eps = 0.0001
         obj = lambda y: -self.g(y)/self.difPros.xi(y)
         #obj = lambda y: -self.g(y)/self.difPros.xi_theoretical(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-8})
+        result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-6, 'maxiter': 25})
         return result.x
     
     def take_decision(self, x):
@@ -164,8 +167,9 @@ class DataDrivenImpulseControl():
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
+        eps = 0.0001
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-2})
+        result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-2})
         return result.x
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
@@ -180,7 +184,7 @@ class DataDrivenImpulseControl():
         exploring = True
         threshold = None
         cumulativeReward = 0
-        thresholds = []
+        thresholds_and_t = []
 
         while t < T:
             if exploring:
@@ -192,7 +196,7 @@ class DataDrivenImpulseControl():
             if reachedZeta and X <= 0:
                 self.fit(data)
                 threshold = self.estimate_threshold()
-                thresholds.append(threshold)
+                thresholds_and_t.append((threshold,t))
                 exploring = False
                 reachedZeta = False
             
@@ -205,7 +209,7 @@ class DataDrivenImpulseControl():
             X = diffpros.step(X, t, dt)
             t += dt
 
-        return cumulativeReward, S_t
+        return cumulativeReward, S_t, thresholds_and_t
 
 if __name__ == "__main__":
     pass
