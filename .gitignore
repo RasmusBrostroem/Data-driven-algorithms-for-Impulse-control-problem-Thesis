@@ -205,3 +205,10 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+
+# Neptune
+.neptune
+
+# Simulated data
+SimulationData
