@@ -31,7 +31,7 @@ powers = [1/2, 1, 2, 5]
 zeroVals = [1/10, 7/10, 45/50, 99/100]
 Cs = [1/100, 1/2, 1, 4]
 As = [0]
-argList = list(product(Cs, As, powers, zeroVals))[16:]
+argList = list(product(Cs, As, powers, zeroVals))[27:]
 
 
 print(argList)
