@@ -371,7 +371,7 @@ powers = [1/2, 1, 2, 5]
 zeroVals = [1/10, 7/10, 45/50, 99/100]
 Cs = [1/100, 1/2, 1, 4]
 As = [0]
-argList = list(product(Cs, As, powers, zeroVals))[16:]
+argList = list(product(Cs, As, powers, zeroVals))[27:]
 
 #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
 Parallel(n_jobs=11)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
