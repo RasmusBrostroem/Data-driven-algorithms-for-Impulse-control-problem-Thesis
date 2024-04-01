@@ -14,7 +14,7 @@ import os
 
 import inspect
 
-from diffusionProcess import DiffusionProcess, drift, sigma, b_linear_generate
+from diffusionProcess import DiffusionProcess, drift, sigma, generate_linear_drift
 from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl, generate_reward_func
 
 
@@ -196,7 +196,7 @@ def simulate_threshold_vs_optimal(tau, Ts, sims, diffusionProcess, OptimalStrat,
 def simulate_dataDriven_vs_optimal(C, Ts, sims, OptimalStrat, DataStrat):
     output = []
     for intersept in [True, False]:
-        diffusionProcess = DiffusionProcess(b=b_linear_generate(C, intersept), sigma=sigma)
+        diffusionProcess = DiffusionProcess(b=generate_linear_drift(C, intersept), sigma=sigma)
         for T in Ts:
             DataStrat.bandwidth = 1/np.sqrt(T)
             for s in range(sims):
