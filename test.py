@@ -15,6 +15,7 @@ from sklearn.neighbors import KernelDensity
 from statsmodels.nonparametric.kde import KDEUnivariate
 import inspect
 from itertools import product
+from simulations import plot_reward_xi_obj
 
 def time_function(func, args_list, repetitions=10):
     total_time = 0
@@ -28,13 +29,14 @@ def time_function(func, args_list, repetitions=10):
 
 
 powers = [1/2, 1, 2, 5]
-zeroVals = [1/10, 7/10, 45/50, 99/100]
+zeroVals = [7/10, 45/50, 99/100]
 Cs = [1/100, 1/2, 1, 4]
 As = [0]
-argList = list(product(Cs, As, powers, zeroVals))[27:]
+argList = list(product(Cs, As, powers, zeroVals))
 
-
-print(argList)
+for c, a, p, z in argList:
+    print(f"C = {c}, power = {p} and zero_val = {z}")
+    plot_reward_xi_obj(c, a, p, z, save_obj=False)
 
 # d = generate_linear_drift(1/2, 0)
 # r = generate_reward_func(1, 7/10)
