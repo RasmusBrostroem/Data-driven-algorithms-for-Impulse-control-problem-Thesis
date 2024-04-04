@@ -30,13 +30,11 @@ def time_function(func, args_list, repetitions=10):
 
 powers = [1/2, 1, 2, 5]
 zeroVals = [7/10, 45/50, 99/100]
-Cs = [1/100, 1/2, 1, 4]
+Cs = [1/5, 1/2, 1, 4]
 As = [0]
 argList = list(product(Cs, As, powers, zeroVals))
 
-for c, a, p, z in argList:
-    print(f"C = {c}, power = {p} and zero_val = {z}")
-    plot_reward_xi_obj(c, a, p, z, save_obj=False)
+plot_reward_xi_obj(1/2, 2, 0.2, 1, 7/10)
 
 # d = generate_linear_drift(1/2, 0)
 # r = generate_reward_func(1, 7/10)
