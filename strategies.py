@@ -41,6 +41,7 @@ class OptimalStrategy():
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
         self.y_star = self.get_optimal_threshold()
         self.reward = 0
+        self.nrDecisions = 0
 
     def get_optimal_threshold(self):
         eps = 0.0001
@@ -51,6 +52,7 @@ class OptimalStrategy():
     
     def take_decision(self, x):
         if x >= self.y_star:
+            self.nrDecisions += 1
             self.reward += self.g(x)
             return True
         
@@ -58,6 +60,7 @@ class OptimalStrategy():
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
         self.reward = 0
+        self.nrDecisions = 0
         t = 0
         X = 0
         while t < T:
@@ -66,7 +69,7 @@ class OptimalStrategy():
             X = diffpros.step(x=X, t=t, dt=dt)
             t += dt
 
-        return self.reward
+        return self.reward, self.nrDecisions
     
 class DataDrivenImpulseControl():
     def __init__(self, rewardFunc, sigma, **kwargs):
@@ -179,6 +182,7 @@ class DataDrivenImpulseControl():
         X = 0
         t = 0
         S_t = 0
+        nrDecisions = 0
         reachedZeta = False
         exploring = True
         threshold = None
@@ -200,6 +204,7 @@ class DataDrivenImpulseControl():
                 reachedZeta = False
             
             if not exploring and X >= threshold:
+                nrDecisions += 1
                 cumulativeReward += self.g(X)
                 X = 0
                 if S_t < t**(2/3):
@@ -208,7 +213,7 @@ class DataDrivenImpulseControl():
             X = diffpros.step(X, t, dt)
             t += dt
 
-        return cumulativeReward, S_t, thresholds_and_Sts
+        return cumulativeReward, S_t, thresholds_and_Sts, nrDecisions
 
 if __name__ == "__main__":
     pass

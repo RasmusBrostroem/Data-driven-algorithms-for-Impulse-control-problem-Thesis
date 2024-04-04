@@ -45,7 +45,9 @@ def simulate_optimal_strategy(T=10, dt=0.01):
         i += 1
 
     total_reward = optStrat.reward
+    nrDecisions = optStrat.nrDecisions
     print(f"Total reward was: {total_reward}")
+    print(f"Number of decisions made: {nrDecisions}")
     for t, x in zip(t_plot, x_plot):
         plt.plot(t,x, color="b")
         
@@ -61,19 +63,16 @@ def plot_uncontrolled_diffusion(T=100, dt=0.01, x0=0):
     plt.show()
     return
 
-def plot_reward_xi_obj(C, A, power, zeroVal):
+def plot_reward_xi_obj(C, A, power, zeroVal, save_obj=False):
     driftFunc = generate_linear_drift(C, A)
     rewardFunc = generate_reward_func(power, zeroVal)
     sigmaFunc = sigma
-    print("Starting")
     difPros = DiffusionProcess(driftFunc, sigmaFunc)
-    print("Diffusion initialized")
     optStrat = OptimalStrategy(difPros, rewardFunc)
-    print("OP strat initialized")
     y1, zeta = get_y1_and_zeta(g=rewardFunc)
     print(f"y1 = {y1} and zeta = {zeta}")
 
-    y = np.linspace(y1-0.00001, zeta*2, 100)
+    y = np.linspace(y1-0.00001, zeta+0.00001, 100)
     gs = rewardFunc(y)
 
     bs = np.fromiter(map(driftFunc,y), dtype=float)
@@ -83,9 +82,7 @@ def plot_reward_xi_obj(C, A, power, zeroVal):
     driftY = np.linspace(-A-1, A+1, 100)
     drifs = np.fromiter(map(driftFunc, driftY), dtype=float)
     sgnDrift = (drifs/sigma(driftY)**2)*np.sign(driftY)
-    print("Done with drift calculations")
     xis = difPros.xi(y)
-    print("Done with xis")
     vals = gs/xis
 
     y_star = optStrat.y_star
@@ -115,6 +112,13 @@ def plot_reward_xi_obj(C, A, power, zeroVal):
 
     plt.plot(y, vals)
     plt.title("Objective function")
+    if save_obj:
+        Cstr = str(C).replace(".", ",")
+        Astr = str(A).replace(".", ",")
+        Powstr = str(power).replace(".", ",")
+        zeroValstr = str(zeroVal).replace(".", ",")
+        plt.savefig(f"./Images/ObjectiveFunctions/C{Cstr}A{Astr}pow{Powstr}zeroVal{zeroValstr}.png")
+        plt.close()
     plt.show()
     return
 
@@ -328,12 +332,14 @@ def simulate_dataDriven_vs_optimal(Ts,
         run[f"Metrics/Sim{s}/simNr"].extend(values=[s for _ in Ts])
         S_Ts = []
         dataRewards = []
+        dataNrDecisionsList = []
         optRewards = []
+        optNrdecisionsList = []
         regrets = []
         for T in Ts:
             DataStrat.bandwidth = bandwidth_func(T)
             diffusionProcess.generate_noise(T, 0.01)
-            dataReward, S_T, thresholds_and_Sts = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
             if len(thresholds_and_Sts) >= 1:
                 thresholds, Sts = zip(*thresholds_and_Sts)
                 if len(thresholds) == 1:
@@ -341,40 +347,38 @@ def simulate_dataDriven_vs_optimal(Ts,
                 else:
                     run[f"Metrics/Sim{s}/Thresholds/{T}"].extend(values=thresholds, steps=Sts)
 
-            opt_reward = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            opt_reward, optNrDecisions = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
 
-            #run[f"Metrics/Sim{s}/T"].append(value=T)
-            #run[f"Metrics/Sim{s}/simNr"].append(value=s)
-            #run[f"Metrics/Sim{s}/S_T"].append(value=S_T, step=T)
-            #run[f"Metrics/Sim{s}/dataDriveReward"].append(value=dataReward, step=T)
-            #run[f"Metrics/Sim{s}/OptimalStratReward"].append(value=opt_reward, step=T)
-            #run[f"Metrics/Sim{s}/regret"].append(value=opt_reward-dataReward, step=T)
             S_Ts.append(S_T)
             dataRewards.append(dataReward)
+            dataNrDecisionsList.append(DataStratNrDecisions)
             optRewards.append(opt_reward)
+            optNrdecisionsList.append(optNrDecisions)
             regrets.append(opt_reward-dataReward)
         
         run[f"Metrics/Sim{s}/S_T"].extend(values=S_Ts, steps=Ts)
         run[f"Metrics/Sim{s}/dataDriveReward"].extend(values=dataRewards, steps=Ts)
         run[f"Metrics/Sim{s}/OptimalStratReward"].extend(values=optRewards, steps=Ts)
         run[f"Metrics/Sim{s}/regret"].extend(values=regrets, steps=Ts)
+        run[f"Metrics/Sim{s}/optNrDecisions"].extend(values=optNrdecisionsList, steps=Ts)
+        run[f"Metrics/Sim{s}/dataStratNrDecisions"].extend(values=dataNrDecisionsList, steps=Ts)
     
     run.stop()
 
 
 
 
+if __name__ == "__main__":
+    Ts = [100*i for i in range(1,51)]
+    sims = 50
+    powers = [1/2, 1, 2, 5]
+    zeroVals = [7/10, 45/50, 99/100]
+    Cs = [1/100, 1/2, 1, 4]
+    As = [0]
+    argList = list(product(Cs, As, powers, zeroVals))[27:]
 
-Ts = [100*i for i in range(1,51)]
-sims = 50
-powers = [1/2, 1, 2, 5]
-zeroVals = [1/10, 7/10, 45/50, 99/100]
-Cs = [1/100, 1/2, 1, 4]
-As = [0]
-argList = list(product(Cs, As, powers, zeroVals))[27:]
-
-#simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
-Parallel(n_jobs=11)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
+    #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
+    Parallel(n_jobs=5)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
 
 # result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(C, Ts, sims, opStrat, dataStrat) for C in Cs)
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
