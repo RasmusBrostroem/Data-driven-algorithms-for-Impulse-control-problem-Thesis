@@ -38,7 +38,7 @@ def download_neptune_data(ids: list[str], file_name: str):
     dataDf = pd.concat(dataDfs, ignore_index=True)
     dataDf.to_csv(f"./SimulationData/{file_name}.csv")
 
-download_neptune_data(ids=["DIF-73", "DIF-74"], file_name="test")
+#download_neptune_data(ids=["DIF-73", "DIF-74"], file_name="test")
 
 
 
