@@ -11,23 +11,24 @@ from statsmodels.nonparametric.kde import KDEUnivariate
 from statsmodels.distributions.empirical_distribution import ECDF
 from collections.abc import Iterable
 
-from diffusionProcess import DiffusionProcess
+from diffusionProcess import DiffusionProcess, sigma, generate_linear_drift
 
 
 def reward(x):
     return 9/10 - np.abs(1-x)**(5)
     # return 10 - np.abs(4-3*x)**2
 
-def generate_reward_func(power):
-    return lambda x: 7/10 - np.abs(1-x)**power
+def generate_reward_func(power: float, zeroVal: float):
+    return lambda x: zeroVal - np.abs(1-x)**power
 
 def get_y1_and_zeta(g):
-    roots = fsolve(g, [0, 10])
-    f = lambda y: y if reward(y) > 0 else np.inf
-    result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
+    eps = 0
+    roots = fsolve(g, [0, 2, 10])
+    f1 = lambda y: y if g(y) > 0 else np.inf
+    result = minimize_scalar(f1, bounds=(0, max(roots)+eps), method="bounded", options={'xatol': 1e-8})
     y1 = result.x
-    f = lambda y: -reward(y) if reward(y) > 0 else np.inf
-    result = minimize_scalar(f, bounds=(0, max(roots)), method="bounded", options={'xatol': 1e-8})
+    f2 = lambda y: -g(y) if g(y) > 0 else np.inf
+    result = minimize_scalar(f2, bounds=(0, max(roots)+eps), method="bounded", options={'xatol': 1e-8})
     zeta = result.x
 
     return y1, zeta
@@ -40,15 +41,18 @@ class OptimalStrategy():
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
         self.y_star = self.get_optimal_threshold()
         self.reward = 0
+        self.nrDecisions = 0
 
     def get_optimal_threshold(self):
+        eps = 0.0001
         obj = lambda y: -self.g(y)/self.difPros.xi(y)
         #obj = lambda y: -self.g(y)/self.difPros.xi_theoretical(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-8})
+        result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-6, 'maxiter': 25})
         return result.x
     
     def take_decision(self, x):
         if x >= self.y_star:
+            self.nrDecisions += 1
             self.reward += self.g(x)
             return True
         
@@ -56,6 +60,7 @@ class OptimalStrategy():
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
         self.reward = 0
+        self.nrDecisions = 0
         t = 0
         X = 0
         while t < T:
@@ -64,7 +69,7 @@ class OptimalStrategy():
             X = diffpros.step(x=X, t=t, dt=dt)
             t += dt
 
-        return self.reward
+        return self.reward, self.nrDecisions
     
 class DataDrivenImpulseControl():
     def __init__(self, rewardFunc, sigma, **kwargs):
@@ -164,8 +169,9 @@ class DataDrivenImpulseControl():
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
+        eps = 0.0001
         obj = lambda y: -self.g(y)/self.xi_eval(y)
-        result = minimize_scalar(obj, bounds=(self.y1, self.zeta), method="bounded", options={'xatol': 1e-2})
+        result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-2})
         return result.x
     
     def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
@@ -176,11 +182,12 @@ class DataDrivenImpulseControl():
         X = 0
         t = 0
         S_t = 0
+        nrDecisions = 0
         reachedZeta = False
         exploring = True
         threshold = None
         cumulativeReward = 0
-        thresholds = []
+        thresholds_and_Sts = []
 
         while t < T:
             if exploring:
@@ -192,11 +199,12 @@ class DataDrivenImpulseControl():
             if reachedZeta and X <= 0:
                 self.fit(data)
                 threshold = self.estimate_threshold()
-                thresholds.append(threshold)
+                thresholds_and_Sts.append((threshold,S_t))
                 exploring = False
                 reachedZeta = False
             
             if not exploring and X >= threshold:
+                nrDecisions += 1
                 cumulativeReward += self.g(X)
                 X = 0
                 if S_t < t**(2/3):
@@ -205,7 +213,7 @@ class DataDrivenImpulseControl():
             X = diffpros.step(X, t, dt)
             t += dt
 
-        return cumulativeReward, S_t
+        return cumulativeReward, S_t, thresholds_and_Sts, nrDecisions
 
 if __name__ == "__main__":
     pass

@@ -110,12 +110,26 @@ ggplot(DataStratData, aes(x=T))+
 
 # Fitting to data:
 ```{r}
-m <- nls(regret ~ I(T^power), data = DataStratData, start = list(power=1), trace = T)
+m <- nls(regret ~ a*T^power, data = DataStratData, start = list(power=1, a=1), trace = F)
 ```
 
 ```{r}
 summary(m)
+confint(m, level=0.95)
+plot(fitted(m), residuals(m))
+regretFitted <- predict(m)
+regretFitted
 ```
+
+```{r}
+ggplot(DataStratData, aes(x=T))+
+  geom_point(aes(y=regret))+
+  #geom_smooth(aes(y=regret))+
+  geom_line(aes(y=lBound), show.legend = FALSE, color="red")+
+  geom_line(aes(y=uBound), show.legend = FALSE, color="red")+
+  geom_line(aes(y=regretFitted), show.legend = FALSE, color="lightblue")
+```
+
 
 
 # MISE data plots
