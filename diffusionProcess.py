@@ -12,8 +12,7 @@ def drift(x: float) -> float:
     return -x/2
 
 def generate_linear_drift(C: float, A: float):
-    return lambda x: -C*x if x <= 0 else (-C*(x-A) if x > A else 0)
-    #return lambda x: 0 if x>-A and x<A else -C*(x-np.sign(x)*A)
+    return lambda x: -C*x
 
 def sigma(x: float) -> float:
     # return the diffusion coefficient evaluated at x and t
