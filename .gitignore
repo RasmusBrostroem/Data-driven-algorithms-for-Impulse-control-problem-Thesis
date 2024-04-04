@@ -208,10 +208,10 @@ rsconnect/
 
 
 # Neptune
-.neptune
+.neptune/
 
 # Simulated data
-SimulationData
+SimulationData/
 
 #Images
-Images
+Images/
