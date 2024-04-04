@@ -72,7 +72,7 @@ def plot_reward_xi_obj(C, A, power, zeroVal, save_obj=False):
     y1, zeta = get_y1_and_zeta(g=rewardFunc)
     print(f"y1 = {y1} and zeta = {zeta}")
 
-    y = np.linspace(y1-0.00001, zeta+0.00001, 100)
+    y = np.linspace(y1-0.00001, zeta*2, 100)
     gs = rewardFunc(y)
 
     bs = np.fromiter(map(driftFunc,y), dtype=float)
@@ -373,12 +373,12 @@ if __name__ == "__main__":
     sims = 50
     powers = [1/2, 1, 2, 5]
     zeroVals = [7/10, 45/50, 99/100]
-    Cs = [1/100, 1/2, 1, 4]
+    Cs = [1/10, 1/2, 4]
     As = [0]
-    argList = list(product(Cs, As, powers, zeroVals))[27:]
+    argList = list(product(Cs, As, powers, zeroVals))
 
     #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
-    Parallel(n_jobs=5)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
+    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
 
 # result = Parallel(n_jobs=-1)(delayed(simulate_dataDriven_vs_optimal)(C, Ts, sims, opStrat, dataStrat) for C in Cs)
 # data_df = pd.DataFrame(list(chain.from_iterable(result)))
