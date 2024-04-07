@@ -40,6 +40,7 @@ To see the general impact of the drift function on the data-driven algorithm I w
 driftAvgData <- data %>% group_by(T, C) %>% 
                           summarise(avgRegret = mean(regret),
                                     seRegret = std.error(regret),
+                                    varRegret = var(regret),
                                     avgST = mean(S_T),
                                     seST = std.error(S_T),
                                     avgDataDecisions = mean(dataStratNrDecisions),
@@ -61,6 +62,35 @@ ggplot(driftAvgData, aes(x=T, group=C))+
 Here we see that the higher the linear drift, the higher the average regret is and the regret starts to take on the shape of the upper bound for the cumulative regret, while lower values of the slope coefficient for the linear drift makes the average regret have the form of the lower bound.
 The reason for this could have something to do with the fact that when the slope of the drift is small, then the brownian motion has a higher impact. Furthermore, we also see that the higher drift creates more variability to the regrets and that the variability increases with the time horizon, which is expected, since there are more time to create a difference in the rewards and thus create a difference in the regrets.
 
+Lets look at the variability of the regret through the variance of the regret for the three different drift slopes and how it changes with increasing T.
+```{r}
+ggplot(driftAvgData, aes(x=T, group=C))+
+  geom_line(aes(y=varRegret, color=C))
+```
+Here we see that all three drift slopes has an increase in the variance, when T increases, but the slope of the increases is drastically different. The higher the drift slope is the higher the increase is for the variance of the regret. 
+
+## Testing how it looks for regret per time unit
+```{r}
+dataPerTime <- data %>% mutate(regretPerTime = regret/T)
+
+driftAvgDataPerTime <- dataPerTime %>% group_by(T, C) %>% 
+                          summarise(avgRegret = mean(regretPerTime),
+                                    seRegret = std.error(regretPerTime),
+                                    varRegret = var(regretPerTime),
+                                    .groups = "drop")
+
+driftAvgDataPerTime$C = as.factor(driftAvgDataPerTime$C)
+```
+
+```{r}
+ggplot(driftAvgDataPerTime, aes(x=T, group=C))+
+  geom_line(aes(y=avgRegret, color=C))+
+  geom_line(aes(y=avgRegret + 1.96*seRegret))+
+  geom_line(aes(y=avgRegret - 1.96*seRegret))
+```
+
+
+## Exploration times
 Lets confirm that the exploration times on average was of order $T^{2/3}$, and look at the confidence bounds aswell, to ensure that there aren't too much variability in the exploration times affecting the regret.
 ```{r}
 ggplot(driftAvgData, aes(x=T, group=C))+
@@ -70,10 +100,22 @@ ggplot(driftAvgData, aes(x=T, group=C))+
 ```
 It is clear that exploration times follow the theoretical exploration times very well with small deviations for both $C=0.1$ and $C=4$. Therefore, it does not seem like this should be causing a difference in the average regret.
 
+## Average number of decisions
+Lets see how the average number of decisions are affected by the drift slope
+```{r}
+ggplot(driftAvgData, aes(x=T, group=C))+
+  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=C))
+```
+Here it is clear that the difference in number of decisions gets larger with a larger drift slope, which therefore results in a higher regret.
+
+Note: Would be interesting to see how the estimated threshold distribute according to the optimal threshold. The algorithm is affected through the expected hitting times, when changing the drift, and with a higher drift slope it matters if the estimated threshold is higher or lower than the optimal threshold, since if the estimated threshold is higher than the optimal threshold, then it will take longer for the process to reach the threshold, and the optimal strategy will then be able to make more decisions than the data-driven approach.
+
+
 
 # Reward functions
 
 ## Power of the reward function
+
 ```{r}
 powerAvgData <- data %>% group_by(T, power) %>% 
                           summarise(avgRegret = mean(regret),
@@ -95,6 +137,15 @@ ggplot(powerAvgData, aes(x=T, group=power))+
   geom_line(aes(y=avgRegret + 1.96*seRegret))+
   geom_line(aes(y=avgRegret - 1.96*seRegret))
 ```
+
+Lets again see how the exploration times distribute and if they followed the expected order.
+```{r}
+ggplot(powerAvgData, aes(x=T, group=power))+
+  geom_line(aes(y=avgST))+
+  geom_line(aes(y=T^(2/3), color="red"))+
+  facet_grid(vars(power))
+```
+Here we see that all follow the expected order of increase with $T$, so the exploration times should not be affecting the average regret.
 
 
 ## Closeness to zero for X=0
@@ -120,7 +171,45 @@ ggplot(zeroValAvgData, aes(x=T, group=zeroVal))+
   geom_line(aes(y=avgRegret - 1.96*seRegret))
 ```
 
-# Interaction between the 
+
+Lets check the average exploration times again
+```{r}
+ggplot(zeroValAvgData, aes(x=T, group=zeroVal))+
+  geom_line(aes(y=avgST))+
+  geom_line(aes(y=T^(2/3), color="red"))+
+  facet_grid(vars(zeroVal))
+```
+Nothing to see here either.
+
+
+# Interaction between the drift slope and reward power
+```{r}
+driftAndPowerAvgData <- data %>% group_by(T, C, power) %>%
+                                      summarise(avgRegret = mean(regret),
+                                                seRegret = std.error(regret),
+                                                avgST = mean(S_T),
+                                                seST = std.error(S_T),
+                                                avgDataDecisions = mean(dataStratNrDecisions),
+                                                seDataDecisions =std.error(dataStratNrDecisions),
+                                                avgOptDecisions = mean(optNrDecisions),
+                                                seOptDecisions = std.error(optNrDecisions),
+                                                .groups = "drop")
+
+driftAndPowerAvgData$power <- as.factor(driftAndPowerAvgData$power)
+driftAndPowerAvgData$C <- as.factor(driftAndPowerAvgData$C)
+```
+
+```{r}
+ggplot(driftAndPowerAvgData, aes(x=T, group=C))+
+  geom_line(aes(y=avgRegret, color=C))+
+  geom_line(aes(y=avgRegret + 1.96*seRegret))+
+  geom_line(aes(y=avgRegret - 1.96*seRegret))+
+  facet_wrap(~power, nrow = 2, scales = "free")
+```
+
+Here we see some of the same patterns as before, where a higher slope of the drift has the highest impact on the average regret and that the higher the power of the reward function is the more the regret is increased for all drift slopes. However, we can also see that the difference between the average regrets for the different drift slopes are increased differently depending on the power of the reward function. For a lower power, meaning a steep reward function, the high drift slope is much higher relative to the other drift slopes, that has almost the same average regret. As the power increases, and the steepness of the reward function falls it seems that a more stable results appears, where the same order of the drift slopes are consistent, but the increase between the lines are not. As the power increases, it seems that the higher drift slope is affected more than the lower drift slopes.
+
+- Could this have something to do with the constant in front or perhaps the power that T has?
 
 
 # Fit to regret table
@@ -144,18 +233,18 @@ fitData
 
 
 ```{r}
-test1 <- filter(data, power == 0.5 & C == 0.5 & zeroVal == 0.99)
+test1 <- filter(data, power == 0.5 & C == 0.5 & zeroVal == 0.9)
 
 test2 <- test1 %>% group_by(T) %>% summarise(avgRegret = mean(regret),
                                             .groups = "drop")
 ggplot(test2, aes(x=T, y=avgRegret))+
   geom_line()
 
-m <- nls(avgRegret ~ I(a*T^p), data = test2, start = list(p=1, a=1), trace = F)
+#m <- nls(avgRegret ~ I(a*T^p), data = test2, start = list(p=1, a=1), trace = F)
 
-summary(m)
-plotfit(m, smooth = T)
-plot(nlsResiduals(m))
+#summary(m)
+#plotfit(m, smooth = T)
+#plot(nlsResiduals(m))
 ```
 
 
