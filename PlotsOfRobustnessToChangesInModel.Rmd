@@ -91,7 +91,7 @@ ggplot(driftAvgDataPerTime, aes(x=T, group=C))+
 
 
 ## Exploration times
-Lets confirm that the exploration times on average was of order $T^{2/3}$, and look at the confidence bounds aswell, to ensure that there aren't too much variability in the exploration times affecting the regret.
+Lets confirm that the exploration times on average was of order $T^{2/3}$, and look at the confidence bounds as well, to ensure that there aren't too much variability in the exploration times affecting the regret.
 ```{r}
 ggplot(driftAvgData, aes(x=T, group=C))+
   geom_line(aes(y=avgST))+
@@ -233,12 +233,12 @@ fitData
 
 
 ```{r}
-test1 <- filter(data, power == 0.5 & C == 0.5 & zeroVal == 0.9)
+test1 <- filter(data, power == 1 & C == 0.5 & zeroVal == 0.9)
 
 test2 <- test1 %>% group_by(T) %>% summarise(avgRegret = mean(regret),
                                             .groups = "drop")
-ggplot(test2, aes(x=T, y=avgRegret))+
-  geom_line()
+ggplot(test1, aes(x=as.factor(T), y=regret))+
+  geom_boxplot()
 
 #m <- nls(avgRegret ~ I(a*T^p), data = test2, start = list(p=1, a=1), trace = F)
 
