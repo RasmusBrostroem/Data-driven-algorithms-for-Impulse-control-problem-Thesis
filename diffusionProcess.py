@@ -14,6 +14,9 @@ def drift(x: float) -> float:
 def generate_linear_drift(C: float, A: float):
     return lambda x: -C*x
 
+def generate_non_linear_drift(C: float, power1: float, power2: float):
+    return lambda x: -C*x**power1 + x**power2
+
 def sigma(x: float) -> float:
     # return the diffusion coefficient evaluated at x and t
     return 1
