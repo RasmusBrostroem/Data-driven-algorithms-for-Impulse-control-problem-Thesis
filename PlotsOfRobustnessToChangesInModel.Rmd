@@ -19,8 +19,8 @@ library(nlstools)
 ```
 
 ```{r}
-#setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
-setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 data <- read.csv("./SimulationData/DriftAndRewardData/DriftsAndRewards.csv")
 ```
 
@@ -147,6 +147,14 @@ ggplot(powerAvgData, aes(x=T, group=power))+
 ```
 Here we see that all follow the expected order of increase with $T$, so the exploration times should not be affecting the average regret.
 
+### Number of decisions
+Lets see how the number of decisions changed
+```{r}
+ggplot(powerAvgData, aes(x=T, group=power))+
+  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=power))
+```
+
+
 
 ## Closeness to zero for X=0
 ```{r}
@@ -181,6 +189,12 @@ ggplot(zeroValAvgData, aes(x=T, group=zeroVal))+
 ```
 Nothing to see here either.
 
+### Number of decisions
+```{r}
+ggplot(zeroValAvgData, aes(x=T, group=zeroVal))+
+  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=zeroVal))
+```
+
 
 # Interaction between the drift slope and reward power
 ```{r}
@@ -211,9 +225,34 @@ Here we see some of the same patterns as before, where a higher slope of the dri
 
 - Could this have something to do with the constant in front or perhaps the power that T has?
 
+# Interaction between power and zeroVal
+```{r}
+PowerAndZeroValAvgData <- data %>% group_by(T, zeroVal, power) %>%
+                                      summarise(avgRegret = mean(regret),
+                                                seRegret = std.error(regret),
+                                                avgST = mean(S_T),
+                                                seST = std.error(S_T),
+                                                avgDataDecisions = mean(dataStratNrDecisions),
+                                                seDataDecisions =std.error(dataStratNrDecisions),
+                                                avgOptDecisions = mean(optNrDecisions),
+                                                seOptDecisions = std.error(optNrDecisions),
+                                                .groups = "drop")
+
+PowerAndZeroValAvgData$power <- as.factor(PowerAndZeroValAvgData$power)
+PowerAndZeroValAvgData$zeroVal <- as.factor(PowerAndZeroValAvgData$zeroVal)
+```
+
+```{r}
+ggplot(PowerAndZeroValAvgData, aes(x=T, group=zeroVal))+
+  geom_line(aes(y=avgRegret, color=zeroVal))+
+  geom_line(aes(y=avgRegret + 1.96*seRegret))+
+  geom_line(aes(y=avgRegret - 1.96*seRegret))+
+  facet_wrap(~power, nrow = 2, scales = "free")
+```
+Looks very similar but with different y-axis corresponding to the effect from the different powers.
+
 
 # Fit to regret table
-
 ```{r}
 avgData <- data %>% group_by(T, C, power, zeroVal) %>% summarise(avgRegret = mean(regret),
                                                                  .groups = "drop")
@@ -231,20 +270,18 @@ summarise(
 fitData
 ```
 
-
+# Individual combinations
 ```{r}
-test1 <- filter(data, power == 1 & C == 0.5 & zeroVal == 0.9)
+individualData <- filter(data, power == 2 & C == 0.5 & zeroVal == 0.99)
 
-test2 <- test1 %>% group_by(T) %>% summarise(avgRegret = mean(regret),
+individualAvgData <- individualData %>% group_by(T) %>% summarise(avgRegret = mean(regret),
                                             .groups = "drop")
-ggplot(test1, aes(x=as.factor(T), y=regret))+
-  geom_boxplot()
 
-#m <- nls(avgRegret ~ I(a*T^p), data = test2, start = list(p=1, a=1), trace = F)
+# ggplot(individualData, aes(x=as.factor(T), y=regret))+
+#   geom_boxplot()
 
-#summary(m)
-#plotfit(m, smooth = T)
-#plot(nlsResiduals(m))
+ggplot(individualAvgData, aes(x=T, y=avgRegret))+
+  geom_line()
 ```
 
 
