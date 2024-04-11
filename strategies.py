@@ -116,7 +116,7 @@ class DataDrivenImpulseControl():
     
     def kernel_fit(self, data: list[float]) -> None:
         self.kde = KDEUnivariate(data)
-        self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth)
+        self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth, fft=self.kernel_method=="gau")
 
     def ecdf_fit(self, data: list[float]) -> None:
         self.cdf = ECDF(data)
