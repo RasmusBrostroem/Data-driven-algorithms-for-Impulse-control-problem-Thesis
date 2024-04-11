@@ -11,7 +11,7 @@ def drift(x: float) -> float:
     # return the drift function evaluated at x and t
     return -x/2
 
-def generate_linear_drift(C: float, A: float):
+def generate_linear_drift(C: float, A: float = 0):
     return lambda x: -C*x
 
 def sigma(x: float) -> float:
@@ -81,8 +81,11 @@ class DiffusionProcess():
             if isinstance(x, Iterable):
                 return np.array(list(map(partial(quad, f, 0, limit=100, epsabs = 1e-3), x)))[:, 0]
             return quad(f, 0, x, epsabs=1e-3, limit=100)[0]
-
-        return 1/self.C_b_sigma_val * np.exp(integral(x))
+        if isinstance(x, Iterable):
+            sigmas = np.array([self.sigma(x_val) for x_val in x])
+            return 1/(self.C_b_sigma_val*sigmas**2) * np.exp(integral(x))
+        
+        return 1/(self.C_b_sigma_val*self.sigma(x)**2) * np.exp(integral(x))
 
     def xi(self, x):
         def inner_integral(y):
