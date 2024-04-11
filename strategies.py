@@ -125,7 +125,7 @@ class DataDrivenImpulseControl():
         self.clear_cache()
         self.kernel_fit(data)
         self.ecdf_fit(data)
-        xs = np.linspace(0, self.zeta, int(100*self.zeta))
+        xs = np.linspace(0, self.zeta+0.1, int(100*(self.zeta+0.1)))
         pdf_values = np.array([self.pdf_eval(x) for x in xs])
         self.pdf_evaluated_x = interp1d(xs, pdf_values, kind="linear", assume_sorted=True, bounds_error=False)
     
@@ -135,9 +135,13 @@ class DataDrivenImpulseControl():
     def pdf_eval(self, x: float) -> float:
         return self.kde.evaluate(x)[0]
     
-    def MISE_eval(self, diffpros: DiffusionProcess):
-        f = lambda x: (self.pdf_eval_interpolate(x) - diffpros.invariant_density(x))**2
-        return quad(f, self.y1, self.zeta, limit=250, epsrel=1e-3)[0]
+    def MISE_eval_pdf(self, diffpros: DiffusionProcess):
+        f = lambda x: (self.pdf_eval(x) - diffpros.invariant_density(x))**2
+        return quad(f, -100, 100, limit=250, epsrel=1e-3, points=np.linspace(-5, 5, 10))[0]
+    
+    def MISE_eval_cdf(self, diffpros: DiffusionProcess):
+        f = lambda x: (self.cdf_eval(x) - diffpros.invariant_distribution(x))**2
+        return quad(f, -100, 100, limit=250, epsrel=1e-3, points=np.linspace(-5, 5, 10))[0]
     
     def KL_eval(self, diffpros: DiffusionProcess):
         eps = 0.0000001
@@ -169,7 +173,7 @@ class DataDrivenImpulseControl():
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
-        eps = 0.0001
+        eps = 0.01
         obj = lambda y: -self.g(y)/self.xi_eval(y)
         result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-2})
         return result.x
