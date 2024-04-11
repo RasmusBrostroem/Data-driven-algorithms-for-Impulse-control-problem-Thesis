@@ -28,13 +28,45 @@ def time_function(func, args_list, repetitions=10):
     return average_time
 
 
-powers = [1/2, 1, 2, 5]
-zeroVals = [7/10, 45/50, 99/100]
-Cs = [1/5, 1/2, 1, 4]
-As = [0]
-argList = list(product(Cs, As, powers, zeroVals))
+diff = DiffusionProcess(b=generate_linear_drift(1, 0), sigma=sigma)
+dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
+dataStrat.bandwidth = 100**(3/2)
 
-plot_reward_xi_obj(1/2, 2, 0.2, 1, 7/10)
+data, t = diff.EulerMaruymaMethod(20, 0.01, 0)
+
+dataStrat.fit(data=data)
+
+
+vals = np.linspace(-50, 50, 1000)
+
+test1 = dataStrat.MISE_eval_pdf(diff)
+test2 = dataStrat.MISE_eval_cdf(diff)
+
+print(test1)
+print(test2)
+
+# print(sum(fs))
+# test = diff.invariant_distribution(24)
+# print(test)
+
+# test = dataStrat.MISE_eval_cdf(diff)
+# print(test)
+
+# vals = np.linspace(-np.inf, 2, 40)
+
+# Fs = [diff.invariant_distribution(v) for v in vals]
+
+# plt.plot(vals, Fs)
+# plt.show()
+
+
+# powers = [1/2, 1, 2, 5]
+# zeroVals = [7/10, 45/50, 99/100]
+# Cs = [1/5, 1/2, 1, 4]
+# As = [0]
+# argList = list(product(Cs, As, powers, zeroVals))
+
+# plot_reward_xi_obj(1/2, 2, 0.2, 1, 7/10)
 
 # d = generate_linear_drift(1/2, 0)
 # r = generate_reward_func(1, 7/10)
