@@ -29,22 +29,43 @@ def time_function(func, args_list, repetitions=10):
 
 
 diff = DiffusionProcess(b=generate_linear_drift(1, 0), sigma=sigma)
-dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
-dataStrat.bandwidth = 100**(3/2)
+# dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
+# dataStrat.bandwidth = 1/np.sqrt(300**(3/2))
+# dataStrat.kernel_method = "uni"
+ST = 300
+band = 1/np.sqrt(ST**(3/2))
+data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
 
-data, t = diff.EulerMaruymaMethod(20, 0.01, 0)
+vals = np.linspace(-5, 5, 100)
+t1 = time()
+skKDE = KernelDensity(kernel='gaussian', bandwidth=band).fit(data[:,None])
+t2 = time()
+statsKDE = KDEUnivariate(data)
+statsKDE.fit(kernel="gau", bw=band, fft=True)
+t3 = time()
 
-dataStrat.fit(data=data)
+statsfs = [statsKDE.evaluate(v) for v in vals]
+t4 = time()
+skfs = [np.exp(skKDE.score_samples(np.array([[v]]))) for v in vals]
+t5 = time()
+fs = [diff.invariant_density(v) for v in vals]
 
+print(f"It took {t2-t1} to fit with Sklearn")
+print(f"It took {t3-t2} to fit with Statsmodel")
+print(f"It took {t4-t3} to evaluate with Statsmodel")
+print(f"It took {t5-t4} to evaluate with Sklearn")
 
-vals = np.linspace(-50, 50, 1000)
+plt.plot(vals, statsfs, label="Statsmodel")
+plt.plot(vals, fs, label="True")
+plt.legend()
+plt.show()
+plt.plot(vals, skfs, label="Sklearn")
+plt.plot(vals, fs, label="True")
+plt.legend()
+plt.show()
 
-test1 = dataStrat.MISE_eval_pdf(diff)
-test2 = dataStrat.MISE_eval_cdf(diff)
-
-print(test1)
-print(test2)
-
+print(f"Evaluation at 5 for Sklearn = {np.exp(skKDE.score_samples(np.array([[2]])))}")
+print(f"Evaluation at 5 for Statsmodels = {statsKDE.evaluate(2)}")
 # print(sum(fs))
 # test = diff.invariant_distribution(24)
 # print(test)
