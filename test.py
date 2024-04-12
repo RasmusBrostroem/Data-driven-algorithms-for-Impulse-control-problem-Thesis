@@ -29,57 +29,43 @@ def time_function(func, args_list, repetitions=10):
 
 
 diff = DiffusionProcess(b=generate_linear_drift(1, 0), sigma=sigma)
-# dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
-# dataStrat.bandwidth = 1/np.sqrt(300**(3/2))
-# dataStrat.kernel_method = "uni"
-ST = 300
-band = 1/np.sqrt(ST**(3/2))
-data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
+dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
+dataStrat.bandwidth = 1/np.sqrt(300**(3/2))
+dataStrat.kernel_method = "tophat"
+# ST = 300
+# band = 1/np.sqrt(ST**(3/2))
+# data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
+# data = list(data)
+# y1, zeta = get_y1_and_zeta(generate_reward_func(1, 0.7))
+# vals = np.linspace(y1, zeta, 100)
 
-vals = np.linspace(-5, 5, 100)
-t1 = time()
-skKDE = KernelDensity(kernel='gaussian', bandwidth=band).fit(data[:,None])
-t2 = time()
-statsKDE = KDEUnivariate(data)
-statsKDE.fit(kernel="gau", bw=band, fft=True)
-t3 = time()
+#dataStrat.fit(data=data)
 
-statsfs = [statsKDE.evaluate(v) for v in vals]
-t4 = time()
-skfs = [np.exp(skKDE.score_samples(np.array([[v]]))) for v in vals]
-t5 = time()
-fs = [diff.invariant_density(v) for v in vals]
+# t1 = time()
+# pdfVals = [dataStrat.pdf_eval(v) for v in vals]
+# t2 = time()
+# pdfInterVals = [dataStrat.pdf_eval_interpolate(v) for v in vals]
+# t3 = time()
+# fs = [diff.invariant_density(v) for v in vals]
 
-print(f"It took {t2-t1} to fit with Sklearn")
-print(f"It took {t3-t2} to fit with Statsmodel")
-print(f"It took {t4-t3} to evaluate with Statsmodel")
-print(f"It took {t5-t4} to evaluate with Sklearn")
+# print(f"It took {t2-t1} to evaluate with normal pdf")
+# print(f"It took {t3-t2} to evaluate with interpolation")
 
-plt.plot(vals, statsfs, label="Statsmodel")
-plt.plot(vals, fs, label="True")
-plt.legend()
-plt.show()
-plt.plot(vals, skfs, label="Sklearn")
-plt.plot(vals, fs, label="True")
-plt.legend()
-plt.show()
-
-print(f"Evaluation at 5 for Sklearn = {np.exp(skKDE.score_samples(np.array([[2]])))}")
-print(f"Evaluation at 5 for Statsmodels = {statsKDE.evaluate(2)}")
-# print(sum(fs))
-# test = diff.invariant_distribution(24)
-# print(test)
-
-# test = dataStrat.MISE_eval_cdf(diff)
-# print(test)
-
-# vals = np.linspace(-np.inf, 2, 40)
-
-# Fs = [diff.invariant_distribution(v) for v in vals]
-
-# plt.plot(vals, Fs)
+# plt.plot(vals, pdfVals, label="pdf")
+# plt.plot(vals, pdfInterVals, label="interpolation")
+# plt.legend()
 # plt.show()
+# # plt.plot(vals, pdfInterVals, label="Sklearn")
+# # plt.plot(vals, fs, label="True")
+# # plt.legend()
+# # plt.show()
 
+# print(f"Evaluation at 1 for pdf = {dataStrat.pdf_eval(0.5)}")
+# print(f"Evaluation at 1 for interpolation = {dataStrat.pdf_eval_interpolate(0.5)}")
+# print(f"True value at 1 = {diff.invariant_density(1)}")
+
+
+#cumulativeReward, S_t, thresholds_and_Sts, nrDecisions = dataStrat.simulate(diff, 200, 0.01)
 
 # powers = [1/2, 1, 2, 5]
 # zeroVals = [7/10, 45/50, 99/100]
