@@ -8,6 +8,7 @@ from functools import partial
 from collections.abc import Iterable
 from mpmath import hyp2f2
 from statsmodels.nonparametric.kde import KDEUnivariate
+from sklearn.neighbors import KernelDensity
 from statsmodels.distributions.empirical_distribution import ECDF
 from collections.abc import Iterable
 
@@ -78,7 +79,7 @@ class DataDrivenImpulseControl():
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
 
         # Kernel attributes
-        self.kernel_method = "gau"
+        self.kernel_method = "gaussian"
         self.bandwidth = None
         self.bandwidth_start = 0.01
         self.bandwidth_end = 1
@@ -115,8 +116,7 @@ class DataDrivenImpulseControl():
         self.pdf_evaluated_x = None
     
     def kernel_fit(self, data: list[float]) -> None:
-        self.kde = KDEUnivariate(data)
-        self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth, fft=self.kernel_method=="gau")
+        self.kde = KernelDensity(kernel=self.kernel_method, bandwidth=self.bandwidth).fit(np.array(data, dtype=object).reshape(-1,1))
 
     def ecdf_fit(self, data: list[float]) -> None:
         self.cdf = ECDF(data)
@@ -133,7 +133,7 @@ class DataDrivenImpulseControl():
         return self.cdf(x)
     
     def pdf_eval(self, x: float) -> float:
-        return self.kde.evaluate(x)[0]
+        return np.exp(self.kde.score_samples(np.array(x, dtype=object).reshape(1,-1)))[0]
     
     def MISE_eval_pdf(self, diffpros: DiffusionProcess):
         f = lambda x: (self.pdf_eval(x) - diffpros.invariant_density(x))**2
