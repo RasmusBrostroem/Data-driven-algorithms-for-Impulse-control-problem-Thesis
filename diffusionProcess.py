@@ -49,8 +49,8 @@ class DiffusionProcess():
                 t-values: the time steps, where simulated values were generated
         """
         N = int(T/dt) # number of time steps
-        x = np.zeros(N+1)
-        t = np.zeros(N+1)
+        x = np.zeros(N+1, dtype=object)
+        t = np.zeros(N+1, dtype=object)
         x[0] = x0
         t[0] = 0.0
 
