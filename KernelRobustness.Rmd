@@ -1,0 +1,116 @@
+---
+title: "KernelRobustness"
+author: "Rasmus Brostrøm"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(stats)
+library(boot)
+library(plotrix)
+library(nlstools)
+library(kableExtra)
+```
+
+```{r}
+setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+data <- read.csv("./SimulationData/Kernels/KernelFunctions.csv")
+```
+
+# MISE for pdf
+
+First we can look at the mean integrated squared error (MISE) of the invariant density to see how changing the kernel affects the estimation of the true density. The reason, that we are looking at the MISE is that it gives a total overview of the risk associated with choice of kernel as it evaluates the deviations of the estimate to the true value over the whole support instead of evaluating it point wise. We are looking at four kernel methods: Epanechnikov, Gaussian, Linear (Uniform) and Tophat (Triangle) for four different drift functions:
+$$
+b(x) = -Cx, \quad C\in \{0.1, 0.5, 2, 4\}
+$$
+and for exploration time $S_T$ ranging from 10 to 300 with increments of 10. Each combination of kernel method, drift and exploration time is simulated 100 times and the average is calculated to approximate the MISE.
+
+```{r}
+AvgData <- data %>% group_by(ST, C, kernelMethod) %>% 
+                          summarise(avgMisePdf = mean(MISEPdf),
+                                    seMisePdf = std.error(MISEPdf),
+                                    sdMisePdf = sd(MISEPdf),
+                                    .groups = "drop")
+
+AvgData$C = as.factor(AvgData$C)
+AvgData$kernelMethod = as.factor(AvgData$kernelMethod)
+```
+
+```{r}
+ggplot(AvgData, aes(x=ST, group=C))+
+  geom_line(aes(y=avgMisePdf, color=C))+
+  facet_wrap(~kernelMethod, nrow = 2, scales = "fixed")+
+  ylab("Mean Integrated Squared Error (MISE)")+
+  xlab("Exploration time")+
+  ggtitle("MISE for the invariant density")+
+  labs(color = "Drift slope")
+```
+
+We can see that the choice of kernel method has little to no effect on the MISE for the different drift slopes. Each kernel method has almost the same trajectory when increasing the exploration time and it is only for the very short exploration time that the kernels deviate, where the Gaussian kernel seems to be the best choice of kernel function. Furthermore, we also see that the drift function affects the kernel methods ability to estimate the true invariant density, where a lower drift slope makes the estimated invariant density more inaccurate. The reason for this could have something to do with the fact that a higher drift slope makes the invariant density more concentrated around 0 (but why would this be better necessarily)?
+
+Lets also see how the standard deviation of the integrated squared error changes with the choice of kernel function:
+
+```{r}
+ggplot(AvgData, aes(x=ST, group=C))+
+  geom_line(aes(y=sdMisePdf, color=C))+
+  facet_wrap(~kernelMethod, nrow = 2, scales = "fixed")+
+  ylab("Standard deviation of the Integrated Squared Error")+
+  xlab("Exploration time")+
+  ggtitle("SD of integrated squared error for the invariant density")+
+  labs(color = "Drift slope")
+```
+
+The plot shows that the all kernels basically have the same stability, when it comes to estimating the invariant density as they have the same trajectory for the different kernels. We also see again that the choice of drift function affects the stability of the kernel methods ability to estimate the invariant density, where a smaller drift slope increases the variability in the estimates of the invariant density. However, we also see that when the exploration time increases, then all kernels methods for all drift functions becomes more and more stable to the point where there is virtually no difference in the estimates for different sample paths of the diffusion process. Thus, if the kernel methods get enough data from the exploration periods, then they will all have close to the same precision, when estimating the invariant density. 
+
+We can therefore conclude that the choice of the kernel method for estimating the invariant density is irrelevant, and that any kernel method will have close to if not the same precision. This match the remark that is in the book about statistical inference for ergodic diffusion processes, where it is stated that the estimation of the invariant density using kernel density estimation is independent of the kernel method used, and that all kernel methods are (I believe) asymptotically consistent.
+
+# MISE for cdf
+
+The invariant distribution function is estimated with the empirical distribution function, and does therefore not rely on any kernel method. Nonetheless, we will still look at how it performs with increasing exploration time and for the different drift functions.
+
+```{r}
+AvgDataCdf <- data %>% group_by(ST, C) %>% 
+                          summarise(avgMiseCdf = mean(MISECdf),
+                                    seMiseCdf = std.error(MISECdf),
+                                    sdMiseCdf = sd(MISECdf),
+                                    .groups = "drop")
+
+AvgDataCdf$C = as.factor(AvgDataCdf$C)
+```
+
+
+```{r}
+ggplot(AvgDataCdf, aes(x=ST, group=C))+
+  geom_line(aes(y=avgMiseCdf, color=C))+
+  ylab("Mean Integrated Squared Error (MISE)")+
+  xlab("Exploration time")+
+  ggtitle("MISE for the invariant distribution function")+
+  labs(color = "Drift slope")
+```
+
+As expected we see that the empirical distribution function gets closer to the true invariant distribution function as the exploration time increases, but we also see that the estimation of the invariant distribution is heavily affected by the drift slope. For the drift slopes of 2 and 4 there are no real difference in the estimate of the invariant distribution function, but as the drift slope decreases, then the empirical distribution function gets more inaccurate and needs more data to become accurate. Furthermore, event after and exploration time of 300 time units, then for the smallest drift slope of 0.1, the empirical distribution function is still not as accurate as it is for a drift slope of 0.5 and an exploration time of 50 time units. 
+
+Lets see how stable the empirical distribution function is for the different drift slopes.
+
+```{r}
+ggplot(AvgDataCdf, aes(x=ST, group=C))+
+  geom_line(aes(y=sdMiseCdf, color=C))+
+  ylab("Standard deviation of Integrated Squared Error")+
+  xlab("Exploration time")+
+  ggtitle("SD for the integrated squared error for the invariant distribution function")+
+  labs(color = "Drift slope")
+```
+
+Here we see that for a small drift slope the empirical distribution function is not only inaccurate for the different exploration times, but it is also more unstable. However, as with the mean of the integrated squared error, as the exploration time increases and the estimator gets more data, then the estimate becomes more stable, but still not to the point where it is as stable as for the other drift slopes. 
+
+We can therefore conclude that the estimation of the invariant distribution function for shorter exploration times are heavily relying on the drift slope of the drift function, and that a smaller drift slopes makes the estimation more inaccurate and more unstable.
