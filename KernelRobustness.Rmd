@@ -24,7 +24,9 @@ library(kableExtra)
 ```{r}
 setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 #setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
-data <- read.csv("./SimulationData/Kernels/KernelFunctions.csv")
+Misedata <- read.csv("./SimulationData/Kernels/KernelFunctions.csv")
+data <- read.csv("./SimulationData/Kernels/KernelStratiesData.csv")
+
 ```
 
 # MISE for pdf
@@ -36,7 +38,7 @@ $$
 and for exploration time $S_T$ ranging from 10 to 300 with increments of 10. Each combination of kernel method, drift and exploration time is simulated 100 times and the average is calculated to approximate the MISE.
 
 ```{r}
-AvgData <- data %>% group_by(ST, C, kernelMethod) %>% 
+AvgData <- Misedata %>% group_by(ST, C, kernelMethod) %>% 
                           summarise(avgMisePdf = mean(MISEPdf),
                                     seMisePdf = std.error(MISEPdf),
                                     sdMisePdf = sd(MISEPdf),
@@ -79,7 +81,7 @@ We can therefore conclude that the choice of the kernel method for estimating th
 The invariant distribution function is estimated with the empirical distribution function, and does therefore not rely on any kernel method. Nonetheless, we will still look at how it performs with increasing exploration time and for the different drift functions.
 
 ```{r}
-AvgDataCdf <- data %>% group_by(ST, C) %>% 
+AvgDataCdf <- Misedata %>% group_by(ST, C) %>% 
                           summarise(avgMiseCdf = mean(MISECdf),
                                     seMiseCdf = std.error(MISECdf),
                                     sdMiseCdf = sd(MISECdf),
@@ -114,3 +116,139 @@ ggplot(AvgDataCdf, aes(x=ST, group=C))+
 Here we see that for a small drift slope the empirical distribution function is not only inaccurate for the different exploration times, but it is also more unstable. However, as with the mean of the integrated squared error, as the exploration time increases and the estimator gets more data, then the estimate becomes more stable, but still not to the point where it is as stable as for the other drift slopes. 
 
 We can therefore conclude that the estimation of the invariant distribution function for shorter exploration times are heavily relying on the drift slope of the drift function, and that a smaller drift slopes makes the estimation more inaccurate and more unstable.
+
+# Different kernels effect on strategy
+Based the on the kernels ability to estimate the invariant density, then we wouldn't expect any difference in the performance of the algorithm, when changing kernel. Nonetheless, we still evaluate each kernel method presented above and their effect on the data-driven nonparametric algorithm. We do so by considering the drift functions:
+$$
+b(x) = -Cx, \quad C \in \{0.5, 4 \}
+$$
+and the reward functions:
+$$
+g(x) = 0.9 - |1-x|^p \quad p \in \{1, 5 \}
+$$
+The four kernel methods are then run 100 times with time horizons $T \in \{100, 200, \dots, 5000 \}$ for the four combinations of reward and drift function.
+
+## Average cumulative regret and variance of regret
+Lets see how they perform in regards to the average cumulative regret:
+
+```{r}
+avgDataStrat <- data %>% group_by(T, C, power, kernelMethod) %>% 
+  summarise(avgRegret = mean(regret),
+            seRegret = std.error(regret),
+            varRegret = var(regret),
+            sdRegret = sd(regret),
+            avgST = mean(S_T),
+            seST = std.error(S_T),
+            avgDataDecisions = mean(dataStratNrDecisions),
+            seDataDecisions =std.error(dataStratNrDecisions),
+            avgOptDecisions = mean(optNrDecisions),
+            seOptDecisions = std.error(optNrDecisions),
+            .groups = "drop")
+
+avgDataStrat$C = as.factor(avgDataStrat$C)
+avgDataStrat$power = as.factor(avgDataStrat$power)
+avgDataStrat$kernelMethod = as.factor(avgDataStrat$kernelMethod)
+```
+
+```{r}
+ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
+  geom_line(aes(y=avgRegret, color=kernelMethod))+
+  labs(title = "Average regret for kernel methods",
+       y = "Average regret",
+       x = "Time horizon (T)",
+       color = "Kernel Method")+
+  facet_grid(power ~ C, scales = "free")
+```
+
+We can clearly see that the only effect on the average regret comes from the change in drift and reward function, but that all kernel methods has the same average regret for each combination of reward and drift function. Lets also fit the average regret and see if the constants are the same. Here we also fit the regret to the form:
+
+$$
+R = c\cdot T^p
+$$
+
+```{r}
+fitavgDataStrat <- avgDataStrat %>% group_by(C, power, kernelMethod) %>% 
+summarise(
+  pow=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgRegret ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgRegret~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,4]<0.05,
+  c=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[2,1],
+  cSE = summary(nls(avgRegret ~ I(a*T^p), start=list(p=1,a=1), trace=F))$coefficients[2,2],
+  cSig = summary(nls(avgRegret~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[2,4]<0.05,
+  .groups = "drop")
+
+fitavgDataStrat$pConf <- paste0(round(fitavgDataStrat$pow, 3), "±", round(fitavgDataStrat$powSE, 4))
+fitavgDataStrat$cConf <- paste0(round(fitavgDataStrat$c, 3), "±", round(fitavgDataStrat$cSE, 4))
+
+createTable <- function(tableData){
+  tableData %>% 
+    pivot_wider(id_cols = power, names_from = C, values_from = c(cConf, pConf)) %>%
+    kable(align = rep("c", 5), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>%
+    kable_classic() %>% 
+    add_header_above(c("Reward power", rep(c("Drift slope = 0.5", "Drift slope = 4"), 2))) %>%
+    add_header_above(c(" ", "c"=2, "p"=2)) %>% 
+    kable_styling(latex_options = "HOLD_position")
+}
+```
+
+Lets see the fits for the Gaussian kernel:
+
+```{r}
+GaussianFits <- fitavgDataStrat %>% filter(kernelMethod == "gaussian")
+createTable(GaussianFits)
+```
+
+For the Epanechnikov kernel:
+
+```{r}
+epanechnikovFits <- fitavgDataStrat %>% filter(kernelMethod == "epanechnikov")
+createTable(epanechnikovFits)
+```
+
+For the tophat kernel:
+
+```{r}
+tophatFits <- fitavgDataStrat %>% filter(kernelMethod == "tophat")
+createTable(tophatFits)
+```
+
+For the linear kernel:
+
+```{r}
+linearFits <- fitavgDataStrat %>% filter(kernelMethod == "linear")
+createTable(linearFits)
+```
+
+We can see from these tables that there are basically no difference in the fits and therefore the kernel method has no effect on the average cumulative regret.
+
+Lets see if all kernel methods are just as stable:
+
+```{r}
+ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
+  geom_line(aes(y=sdRegret, color=kernelMethod))+
+  labs(title = "Average regret for kernel methods",
+       y = "Average regret",
+       x = "Time horizon (T)",
+       color = "Kernel Method")+
+  facet_grid(power ~ C, scales = "free")
+```
+
+Here we also see that the standard deviation of the regret is almost the same for each of the kernel methods for the four combinations of the reward and drift functions, with the Gaussian kernel having a slightly lower standard deviation for most of the time horizons when the power is high for the reward function. However, this is such a small difference and it is not consistent for all time horizons, thus making it irrelevant which kernel method is chosen.
+
+For good measure, then lets also just quickly see if there is any change in the difference in number of decisions made made by the optimal strategy and the data-driven strategy, when changing kernel:
+
+```{r}
+ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
+  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=kernelMethod))+
+  labs(title = "Average regret for kernel methods",
+       y = "Average regret",
+       x = "Time horizon (T)",
+       color = "Kernel Method")+
+  facet_grid(power ~ C, scales = "free")
+```
+
+As expected we see that there is no difference in the average difference in number of decisions made by the optimal strategy and the data-driven strategy.
+
+
+
+

@@ -79,8 +79,8 @@ def download_threshold_data(ids: list[str], file_name: str):
 
 
 if __name__ == "__main__":
-    id_list = [f"DIF-{i}" for i in range(233, 249)]
-    download_neptune_data(ids=id_list, file_name="KernelFunctions")
+    id_list = [f"DIF-{i}" for i in range(255, 271)]
+    download_neptune_data(ids=id_list, file_name="KernelStratiesData")
     #download_threshold_data(id_list, "DriftsAndRewardsThresholds")
 
 
