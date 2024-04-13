@@ -375,7 +375,7 @@ if __name__ == "__main__":
     ### Simulating MISE for different kernels and different drift functions
     STs = [10*i for i in range(1,31)]
     sims = 100
-    kernels = ["gau", "epa", "tri", "uni"]
+    kernels = ["gaussian", "epanechnikov", "linear", "tophat"]
     Cs = [1/10, 1/2, 2, 4]
     powers = [1]
     zeroVals = [7/10]
