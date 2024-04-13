@@ -284,13 +284,14 @@ def simulate_dataDriven_vs_optimal(Ts,
                                    zeroVal,
                                    a=0.000001,
                                    M1=0.000001,
-                                   kernel_method="gau",
-                                   bandwidth_func = lambda T: 1/np.sqrt(T)):
+                                   kernel_method="gaussian",
+                                   bandwidth_func = lambda T: 1/np.sqrt(T),
+                                   neptune_tags=["StrategyVsOptimal"]):
     
     driftFunc = generate_linear_drift(C, A)
     rewardFunc = generate_reward_func(power, zeroVal)
     sigmaFunc = sigma
-    run = neptune.init_run(project='rasmusbrostroem/DiffusionControl')
+    run = neptune.init_run(project='rasmusbrostroem/DiffusionControl', tags=neptune_tags)
     runId = run["sys/id"].fetch()
     diffusionProcess = DiffusionProcess(b=driftFunc, sigma=sigmaFunc)
     OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=rewardFunc)
@@ -361,6 +362,7 @@ def simulate_dataDriven_vs_optimal(Ts,
 
 
 if __name__ == "__main__":
+    ### Simulating the robustness for changing models and reward function
     # Ts = [100*i for i in range(1,51)]
     # sims = 50
     # powers = [1/2, 1, 2, 5]
@@ -373,21 +375,41 @@ if __name__ == "__main__":
     # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
 
     ### Simulating MISE for different kernels and different drift functions
-    STs = [10*i for i in range(1,31)]
+    # STs = [10*i for i in range(1,31)]
+    # sims = 100
+    # kernels = ["gaussian", "epanechnikov", "linear", "tophat"]
+    # Cs = [1/10, 1/2, 2, 4]
+    # powers = [1]
+    # zeroVals = [7/10]
+    # As = [0]
+    # argList = list(product(Cs, As, powers, zeroVals, kernels))
+    # Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
+    #                                           sims=sims,
+    #                                           C=C,
+    #                                           A=A,
+    #                                           power=p,
+    #                                           zeroVal=z,
+    #                                           kernel_method=kernel,
+    #                                           neptune_tags=["MISE", "Kernel Methods"]) for C, A, p, z, kernel in argList)
+
+    ### Simulating the robustness for different kernels
+    Ts = [100*i for i in range(1,51)]
     sims = 100
     kernels = ["gaussian", "epanechnikov", "linear", "tophat"]
-    Cs = [1/10, 1/2, 2, 4]
-    powers = [1]
-    zeroVals = [7/10]
+    powers = [1, 5]
+    zeroVals = [0.9]
+    Cs = [1/2, 4]
     As = [0]
     argList = list(product(Cs, As, powers, zeroVals, kernels))
-    Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
-                                              sims=sims,
-                                              C=C,
-                                              A=A,
-                                              power=p,
-                                              zeroVal=z,
-                                              kernel_method=kernel,
-                                              neptune_tags=["MISE", "Kernel Methods"]) for C, A, p, z, kernel in argList)
+
+    #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
+    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+                                                               sims=sims,
+                                                               C=C,
+                                                               A=A,
+                                                               power=p,
+                                                               zeroVal=z,
+                                                               kernel_method=kernel,
+                                                               neptune_tags=["StrategyVsOptimal", "Kernel Methods"]) for C, A, p, z, kernel in argList)
 
     
