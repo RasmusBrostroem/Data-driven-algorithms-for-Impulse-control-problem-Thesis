@@ -28,18 +28,30 @@ def time_function(func, args_list, repetitions=10):
     return average_time
 
 
-diff = DiffusionProcess(b=generate_linear_drift(1, 0), sigma=sigma)
+diff = DiffusionProcess(b=generate_linear_drift(0.1, 0), sigma=sigma)
+
 dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
 dataStrat.bandwidth = 1/np.sqrt(300**(3/2))
-dataStrat.kernel_method = "tophat"
-# ST = 300
-# band = 1/np.sqrt(ST**(3/2))
-# data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
-# data = list(data)
-# y1, zeta = get_y1_and_zeta(generate_reward_func(1, 0.7))
-# vals = np.linspace(y1, zeta, 100)
+dataStrat.kernel_method = "linear"
+ST = 100
+band = 1/np.sqrt(ST**(3/2))
+data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
+data = list(data)
+y1, zeta = get_y1_and_zeta(generate_reward_func(1, 0.7))
+vals = np.linspace(-10, 10, 5000)
 
-#dataStrat.fit(data=data)
+dataStrat.fit(data=data)
+f = lambda x: (dataStrat.pdf_eval(x)-diff.invariant_density(x))**2
+M = [f(v) for v in vals]
+print(sum(M)/(5000/20))
+m3 = dataStrat.MISE_eval_pdf(diff)
+print(m3)
+M1 = quad(f, -100, 100, limit=2500, epsabs=1e-3, points=np.linspace(-5, 5, 1000))
+print(M1)
+plt.plot(vals, M)
+plt.show()
+
+
 
 # t1 = time()
 # pdfVals = [dataStrat.pdf_eval(v) for v in vals]
