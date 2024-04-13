@@ -1,6 +1,6 @@
 from scipy.integrate import odeint, quad
 from diffusionProcess import drift, sigma, DiffusionProcess, generate_linear_drift
-from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func
+from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func, get_bandwidth
 from time import time
 import numpy as np
 from collections.abc import Iterable
@@ -28,28 +28,49 @@ def time_function(func, args_list, repetitions=10):
     return average_time
 
 
-diff = DiffusionProcess(b=generate_linear_drift(0.1, 0), sigma=sigma)
+T=100
 
-dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
-dataStrat.bandwidth = 1/np.sqrt(300**(3/2))
-dataStrat.kernel_method = "linear"
-ST = 100
-band = 1/np.sqrt(ST**(3/2))
-data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
-data = list(data)
-y1, zeta = get_y1_and_zeta(generate_reward_func(1, 0.7))
-vals = np.linspace(-10, 10, 5000)
+print(1/np.sqrt(T))
+print(get_bandwidth(T))
 
-dataStrat.fit(data=data)
-f = lambda x: (dataStrat.pdf_eval(x)-diff.invariant_density(x))**2
-M = [f(v) for v in vals]
-print(sum(M)/(5000/20))
-m3 = dataStrat.MISE_eval_pdf(diff)
-print(m3)
-M1 = quad(f, -100, 100, limit=2500, epsabs=1e-3, points=np.linspace(-5, 5, 1000))
-print(M1)
-plt.plot(vals, M)
-plt.show()
+# kernels = ["gaussian"]
+# Cs = [1/10, 1/2, 2, 4]
+# powers = [1]
+# zeroVals = [7/10]
+# As = [0]
+
+# bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
+
+# argList = list(product(Cs, bandwidths))
+# for c, bandwidth_a_p in argList:
+#     print(f"C = {c}, bandwidth_a = {bandwidth_a_p[0]}, bandwidth_p = {bandwidth_a_p[1]}")
+
+
+
+
+
+# diff = DiffusionProcess(b=generate_linear_drift(0.1, 0), sigma=sigma)
+
+# dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
+# dataStrat.bandwidth = 1/np.sqrt(300**(3/2))
+# dataStrat.kernel_method = "linear"
+# ST = 100
+# band = 1/np.sqrt(ST**(3/2))
+# data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
+# data = list(data)
+# y1, zeta = get_y1_and_zeta(generate_reward_func(1, 0.7))
+# vals = np.linspace(-10, 10, 5000)
+
+# dataStrat.fit(data=data)
+# f = lambda x: (dataStrat.pdf_eval(x)-diff.invariant_density(x))**2
+# M = [f(v) for v in vals]
+# print(sum(M)/(5000/20))
+# m3 = dataStrat.MISE_eval_pdf(diff)
+# print(m3)
+# M1 = quad(f, -100, 100, limit=2500, epsabs=1e-3, points=np.linspace(-5, 5, 1000))
+# print(M1)
+# plt.plot(vals, M)
+# plt.show()
 
 
 
