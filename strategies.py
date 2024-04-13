@@ -136,12 +136,24 @@ class DataDrivenImpulseControl():
         return np.exp(self.kde.score_samples(np.array(x, dtype=object).reshape(1,-1)))[0]
     
     def MISE_eval_pdf(self, diffpros: DiffusionProcess):
+        points = 5000
+        start = -10
+        end = 10
+        vals = np.linspace(start, end, points)
         f = lambda x: (self.pdf_eval(x) - diffpros.invariant_density(x))**2
-        return quad(f, -100, 100, limit=250, epsrel=1e-3, points=np.linspace(-5, 5, 10))[0]
+        MISE = sum([f(v)*(end-start)/points for v in vals])
+        return MISE
+        #return quad(f, -10, 10, limit=2500, epsrel=1e-3, points=np.linspace(-5, 5, 1000))[0]
     
     def MISE_eval_cdf(self, diffpros: DiffusionProcess):
+        points = 5000
+        start = -10
+        end = 10
+        vals = np.linspace(start, end, points)
         f = lambda x: (self.cdf_eval(x) - diffpros.invariant_distribution(x))**2
-        return quad(f, -100, 100, limit=250, epsrel=1e-3, points=np.linspace(-5, 5, 10))[0]
+        MISE = sum([f(v)*(end-start)/points for v in vals])
+        return MISE
+        #return quad(f, -10, 10, limit=2500, epsrel=1e-3, points=np.linspace(-5, 5, 1000))[0]
     
     def KL_eval(self, diffpros: DiffusionProcess):
         eps = 0.0000001
