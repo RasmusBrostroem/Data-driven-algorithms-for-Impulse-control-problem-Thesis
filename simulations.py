@@ -19,7 +19,7 @@ from itertools import product
 import inspect
 
 from diffusionProcess import DiffusionProcess, drift, sigma, generate_linear_drift
-from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl, generate_reward_func
+from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl, generate_reward_func, get_bandwidth
 
 
 
@@ -139,8 +139,8 @@ def simulate_MISE(STs,
                   zeroVal,
                   a=0.000001,
                   M1=0.000001,
-                  kernel_method="gau",
-                  bandwidth_func = lambda T: 1/np.sqrt(T),
+                  kernel_method="gaussian",
+                  bandwidth_a_p=[1, -1/2],
                   neptune_tags=["MISE"]):
     
     driftFunc = generate_linear_drift(C, A)
@@ -158,9 +158,11 @@ def simulate_MISE(STs,
 
     run["AlgoParams"] = {
         "kernelMethod": DataStrat.kernel_method,
-        "bandwidthMethod": inspect.getsource(bandwidth_func),
+        "bandwidthMethod": inspect.getsource(get_bandwidth),
         "a": DataStrat.a,
-        "M1": DataStrat.M1
+        "M1": DataStrat.M1,
+        "bandwidth_a": bandwidth_a_p[0],
+        "bandwidth_p": bandwidth_a_p[1]
     }
 
     run["ModelParams"] = {
@@ -180,18 +182,18 @@ def simulate_MISE(STs,
         run[f"Metrics/Sim{s}/ST"].extend(values=STs)
         run[f"Metrics/Sim{s}/simNr"].extend(values=[s for _ in STs])
         MISE_pdf_list = []
-        MISE_cdf_list = []
+        #MISE_cdf_list = []
         for ST in STs:
-            DataStrat.bandwidth = bandwidth_func(ST**(3/2))
+            DataStrat.bandwidth = get_bandwidth(T=ST**(3/2), a=bandwidth_a_p[0], p=bandwidth_a_p[1])
             data, t = diffusionProcess.EulerMaruymaMethod(ST, 0.01, 0)
             DataStrat.fit(data)
             MISE_pdf = DataStrat.MISE_eval_pdf(diffusionProcess)
             MISE_pdf_list.append(MISE_pdf)
-            MISE_cdf = DataStrat.MISE_eval_cdf(diffusionProcess)
-            MISE_cdf_list.append(MISE_cdf)
+            #MISE_cdf = DataStrat.MISE_eval_cdf(diffusionProcess)
+            #MISE_cdf_list.append(MISE_cdf)
     
         run[f"Metrics/Sim{s}/MISEPdf"].extend(values=MISE_pdf_list, steps=STs)
-        run[f"Metrics/Sim{s}/MISECdf"].extend(values=MISE_cdf_list, steps=STs)
+        #run[f"Metrics/Sim{s}/MISECdf"].extend(values=MISE_cdf_list, steps=STs)
     
     run.stop()
 
@@ -393,23 +395,41 @@ if __name__ == "__main__":
     #                                           neptune_tags=["MISE", "Kernel Methods"]) for C, A, p, z, kernel in argList)
 
     ### Simulating the robustness for different kernels
-    Ts = [100*i for i in range(1,51)]
-    sims = 100
-    kernels = ["gaussian", "epanechnikov", "linear", "tophat"]
-    powers = [1, 5]
-    zeroVals = [0.9]
-    Cs = [1/2, 4]
-    As = [0]
-    argList = list(product(Cs, As, powers, zeroVals, kernels))
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # kernels = ["gaussian", "epanechnikov", "linear", "tophat"]
+    # powers = [1, 5]
+    # zeroVals = [0.9]
+    # Cs = [1/2, 4]
+    # As = [0]
+    # argList = list(product(Cs, As, powers, zeroVals, kernels))
 
-    #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
-    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
-                                                               sims=sims,
-                                                               C=C,
-                                                               A=A,
-                                                               power=p,
-                                                               zeroVal=z,
-                                                               kernel_method=kernel,
-                                                               neptune_tags=["StrategyVsOptimal", "Kernel Methods"]) for C, A, p, z, kernel in argList)
+    # #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=C,
+    #                                                            A=A,
+    #                                                            power=p,
+    #                                                            zeroVal=z,
+    #                                                            kernel_method=kernel,
+    #                                                            neptune_tags=["StrategyVsOptimal", "Kernel Methods"]) for C, A, p, z, kernel in argList)
+
+    ### Simulating MISE for different bandwidths and drift functions
+    STs = [10*i for i in range(1,31)]
+    sims = 100
+    kernels = ["gaussian"]
+    Cs = [1/10, 1/2, 2, 4]
+    bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
+
+    argList = list(product(Cs, bandwidths))
+    Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
+                                              sims=sims,
+                                              C=C,
+                                              A=0,
+                                              power=1,
+                                              zeroVal=7/10,
+                                              kernel_method="gaussian",
+                                              bandwidth_a_p=bandwidth_a_p,
+                                              neptune_tags=["MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p in argList)
 
     
