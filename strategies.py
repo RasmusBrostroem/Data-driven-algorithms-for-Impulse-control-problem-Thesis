@@ -8,11 +8,18 @@ from functools import partial
 from collections.abc import Iterable
 from mpmath import hyp2f2
 from statsmodels.nonparametric.kde import KDEUnivariate
+from sklearn.neighbors import KernelDensity
 from statsmodels.distributions.empirical_distribution import ECDF
 from collections.abc import Iterable
 
 from diffusionProcess import DiffusionProcess, sigma, generate_linear_drift
 
+
+def get_bandwidth(T, a=1, p=-1/2):
+    if isinstance(a, str):
+        return a
+    
+    return a*T**p
 
 def reward(x):
     return 9/10 - np.abs(1-x)**(5)
@@ -78,7 +85,7 @@ class DataDrivenImpulseControl():
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
 
         # Kernel attributes
-        self.kernel_method = "gau"
+        self.kernel_method = "gaussian"
         self.bandwidth = None
         self.bandwidth_start = 0.01
         self.bandwidth_end = 1
@@ -115,8 +122,7 @@ class DataDrivenImpulseControl():
         self.pdf_evaluated_x = None
     
     def kernel_fit(self, data: list[float]) -> None:
-        self.kde = KDEUnivariate(data)
-        self.kde.fit(kernel=self.kernel_method, bw=self.bandwidth)
+        self.kde = KernelDensity(kernel=self.kernel_method, bandwidth=self.bandwidth).fit(np.array(data, dtype=object).reshape(-1,1))
 
     def ecdf_fit(self, data: list[float]) -> None:
         self.cdf = ECDF(data)
@@ -125,7 +131,7 @@ class DataDrivenImpulseControl():
         self.clear_cache()
         self.kernel_fit(data)
         self.ecdf_fit(data)
-        xs = np.linspace(0, self.zeta, int(100*self.zeta))
+        xs = np.linspace(0, self.zeta+0.1, int(100*(self.zeta+0.1)))
         pdf_values = np.array([self.pdf_eval(x) for x in xs])
         self.pdf_evaluated_x = interp1d(xs, pdf_values, kind="linear", assume_sorted=True, bounds_error=False)
     
@@ -133,11 +139,27 @@ class DataDrivenImpulseControl():
         return self.cdf(x)
     
     def pdf_eval(self, x: float) -> float:
-        return self.kde.evaluate(x)[0]
+        return np.exp(self.kde.score_samples(np.array(x, dtype=object).reshape(1,-1)))[0]
     
-    def MISE_eval(self, diffpros: DiffusionProcess):
-        f = lambda x: (self.pdf_eval_interpolate(x) - diffpros.invariant_density(x))**2
-        return quad(f, self.y1, self.zeta, limit=250, epsrel=1e-3)[0]
+    def MISE_eval_pdf(self, diffpros: DiffusionProcess):
+        points = 5000
+        start = -10
+        end = 10
+        vals = np.linspace(start, end, points)
+        f = lambda x: (self.pdf_eval(x) - diffpros.invariant_density(x))**2
+        MISE = sum([f(v)*(end-start)/points for v in vals])
+        return MISE
+        #return quad(f, -10, 10, limit=2500, epsrel=1e-3, points=np.linspace(-5, 5, 1000))[0]
+    
+    def MISE_eval_cdf(self, diffpros: DiffusionProcess):
+        points = 5000
+        start = -10
+        end = 10
+        vals = np.linspace(start, end, points)
+        f = lambda x: (self.cdf_eval(x) - diffpros.invariant_distribution(x))**2
+        MISE = sum([f(v)*(end-start)/points for v in vals])
+        return MISE
+        #return quad(f, -10, 10, limit=2500, epsrel=1e-3, points=np.linspace(-5, 5, 1000))[0]
     
     def KL_eval(self, diffpros: DiffusionProcess):
         eps = 0.0000001
@@ -169,7 +191,7 @@ class DataDrivenImpulseControl():
         return np.maximum(xi_estimate, self.M1)
     
     def estimate_threshold(self) -> float:
-        eps = 0.0001
+        eps = 0.01
         obj = lambda y: -self.g(y)/self.xi_eval(y)
         result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-2})
         return result.x

@@ -1,0 +1,370 @@
+---
+title: "KernelRobustness"
+author: "Rasmus Brostrøm"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(stats)
+library(boot)
+library(plotrix)
+library(nlstools)
+library(kableExtra)
+```
+
+```{r}
+setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+Misedata <- read.csv("./SimulationData/Kernels/KernelFunctions.csv")
+data <- read.csv("./SimulationData/Kernels/KernelStratiesData.csv")
+MiseBandwidth <- read.csv("./SimulationData/Kernels/MiseKernelBandwidth.csv")
+```
+
+# MISE for pdf
+
+First we can look at the mean integrated squared error (MISE) of the invariant density to see how changing the kernel affects the estimation of the true density. The reason, that we are looking at the MISE is that it gives a total overview of the risk associated with choice of kernel as it evaluates the deviations of the estimate to the true value over the whole support instead of evaluating it point wise. We are looking at four kernel methods: Epanechnikov, Gaussian, Linear (Uniform) and Tophat (Triangle) for four different drift functions:
+$$
+b(x) = -Cx, \quad C\in \{0.1, 0.5, 2, 4\}
+$$
+and for exploration time $S_T$ ranging from 10 to 300 with increments of 10. Each combination of kernel method, drift and exploration time is simulated 100 times and the average is calculated to approximate the MISE.
+
+```{r}
+AvgData <- Misedata %>% group_by(ST, C, kernelMethod) %>% 
+                          summarise(avgMisePdf = mean(MISEPdf),
+                                    seMisePdf = std.error(MISEPdf),
+                                    sdMisePdf = sd(MISEPdf),
+                                    .groups = "drop")
+
+AvgData$C = as.factor(AvgData$C)
+AvgData$kernelMethod = as.factor(AvgData$kernelMethod)
+```
+
+```{r}
+ggplot(AvgData, aes(x=ST, group=C))+
+  geom_line(aes(y=avgMisePdf, color=C))+
+  facet_wrap(~kernelMethod, nrow = 2, scales = "fixed")+
+  ylab("Mean Integrated Squared Error (MISE)")+
+  xlab("Exploration time")+
+  ggtitle("MISE for the invariant density")+
+  labs(color = "Drift slope")
+```
+
+We can see that the choice of kernel method has little to no effect on the MISE for the different drift slopes. Each kernel method has almost the same trajectory when increasing the exploration time and it is only for the very short exploration time that the kernels deviate, where the Gaussian kernel seems to be the best choice of kernel function. Furthermore, we also see that the drift function affects the kernel methods ability to estimate the true invariant density, where a lower drift slope makes the estimated invariant density more inaccurate. The reason for this could have something to do with the fact that a higher drift slope makes the invariant density more concentrated around 0 (but why would this be better necessarily)?
+
+Lets also see how the standard deviation of the integrated squared error changes with the choice of kernel function:
+
+```{r}
+ggplot(AvgData, aes(x=ST, group=C))+
+  geom_line(aes(y=sdMisePdf, color=C))+
+  facet_wrap(~kernelMethod, nrow = 2, scales = "fixed")+
+  ylab("Standard deviation of the Integrated Squared Error")+
+  xlab("Exploration time")+
+  ggtitle("SD of integrated squared error for the invariant density")+
+  labs(color = "Drift slope")
+```
+
+The plot shows that the all kernels basically have the same stability, when it comes to estimating the invariant density as they have the same trajectory for the different kernels. We also see again that the choice of drift function affects the stability of the kernel methods ability to estimate the invariant density, where a smaller drift slope increases the variability in the estimates of the invariant density. However, we also see that when the exploration time increases, then all kernels methods for all drift functions becomes more and more stable to the point where there is virtually no difference in the estimates for different sample paths of the diffusion process. Thus, if the kernel methods get enough data from the exploration periods, then they will all have close to the same precision, when estimating the invariant density. 
+
+We can therefore conclude that the choice of the kernel method for estimating the invariant density is irrelevant, and that any kernel method will have close to if not the same precision. This match the remark that is in the book about statistical inference for ergodic diffusion processes, where it is stated that the estimation of the invariant density using kernel density estimation is independent of the kernel method used, and that all kernel methods are (I believe) asymptotically consistent.
+
+# MISE for cdf
+
+The invariant distribution function is estimated with the empirical distribution function, and does therefore not rely on any kernel method. Nonetheless, we will still look at how it performs with increasing exploration time and for the different drift functions.
+
+```{r}
+AvgDataCdf <- Misedata %>% group_by(ST, C) %>% 
+                          summarise(avgMiseCdf = mean(MISECdf),
+                                    seMiseCdf = std.error(MISECdf),
+                                    sdMiseCdf = sd(MISECdf),
+                                    .groups = "drop")
+
+AvgDataCdf$C = as.factor(AvgDataCdf$C)
+```
+
+
+```{r}
+ggplot(AvgDataCdf, aes(x=ST, group=C))+
+  geom_line(aes(y=avgMiseCdf, color=C))+
+  ylab("Mean Integrated Squared Error (MISE)")+
+  xlab("Exploration time")+
+  ggtitle("MISE for the invariant distribution function")+
+  labs(color = "Drift slope")
+```
+
+As expected we see that the empirical distribution function gets closer to the true invariant distribution function as the exploration time increases, but we also see that the estimation of the invariant distribution is heavily affected by the drift slope. For the drift slopes of 2 and 4 there are no real difference in the estimate of the invariant distribution function, but as the drift slope decreases, then the empirical distribution function gets more inaccurate and needs more data to become accurate. Furthermore, event after and exploration time of 300 time units, then for the smallest drift slope of 0.1, the empirical distribution function is still not as accurate as it is for a drift slope of 0.5 and an exploration time of 50 time units. 
+
+Lets see how stable the empirical distribution function is for the different drift slopes.
+
+```{r}
+ggplot(AvgDataCdf, aes(x=ST, group=C))+
+  geom_line(aes(y=sdMiseCdf, color=C))+
+  ylab("Standard deviation of Integrated Squared Error")+
+  xlab("Exploration time")+
+  ggtitle("SD for the integrated squared error for the invariant distribution function")+
+  labs(color = "Drift slope")
+```
+
+Here we see that for a small drift slope the empirical distribution function is not only inaccurate for the different exploration times, but it is also more unstable. However, as with the mean of the integrated squared error, as the exploration time increases and the estimator gets more data, then the estimate becomes more stable, but still not to the point where it is as stable as for the other drift slopes. 
+
+We can therefore conclude that the estimation of the invariant distribution function for shorter exploration times are heavily relying on the drift slope of the drift function, and that a smaller drift slopes makes the estimation more inaccurate and more unstable.
+
+# Different kernels effect on strategy
+Based the on the kernels ability to estimate the invariant density, then we wouldn't expect any difference in the performance of the algorithm, when changing kernel. Nonetheless, we still evaluate each kernel method presented above and their effect on the data-driven nonparametric algorithm. We do so by considering the drift functions:
+$$
+b(x) = -Cx, \quad C \in \{0.5, 4 \}
+$$
+and the reward functions:
+$$
+g(x) = 0.9 - |1-x|^p \quad p \in \{1, 5 \}
+$$
+The four kernel methods are then run 100 times with time horizons $T \in \{100, 200, \dots, 5000 \}$ for the four combinations of reward and drift function.
+
+## Average cumulative regret and variance of regret
+Lets see how they perform in regards to the average cumulative regret:
+
+```{r}
+avgDataStrat <- data %>% group_by(T, C, power, kernelMethod) %>% 
+  summarise(avgRegret = mean(regret),
+            seRegret = std.error(regret),
+            varRegret = var(regret),
+            sdRegret = sd(regret),
+            avgST = mean(S_T),
+            seST = std.error(S_T),
+            avgDataDecisions = mean(dataStratNrDecisions),
+            seDataDecisions =std.error(dataStratNrDecisions),
+            avgOptDecisions = mean(optNrDecisions),
+            seOptDecisions = std.error(optNrDecisions),
+            .groups = "drop")
+
+avgDataStrat$C = as.factor(avgDataStrat$C)
+avgDataStrat$power = as.factor(avgDataStrat$power)
+avgDataStrat$kernelMethod = as.factor(avgDataStrat$kernelMethod)
+```
+
+```{r}
+ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
+  geom_line(aes(y=avgRegret, color=kernelMethod))+
+  labs(title = "Average regret for kernel methods",
+       y = "Average regret",
+       x = "Time horizon (T)",
+       color = "Kernel Method")+
+  facet_grid(power ~ C, scales = "free")
+```
+
+We can clearly see that the only effect on the average regret comes from the change in drift and reward function, but that all kernel methods has the same average regret for each combination of reward and drift function. Lets also fit the average regret and see if the constants are the same. Here we also fit the regret to the form:
+
+$$
+R = c\cdot T^p
+$$
+
+```{r}
+fitavgDataStrat <- avgDataStrat %>% group_by(C, power, kernelMethod) %>% 
+summarise(
+  pow=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgRegret ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgRegret~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,4]<0.05,
+  c=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[2,1],
+  cSE = summary(nls(avgRegret ~ I(a*T^p), start=list(p=1,a=1), trace=F))$coefficients[2,2],
+  cSig = summary(nls(avgRegret~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[2,4]<0.05,
+  .groups = "drop")
+
+fitavgDataStrat$pConf <- paste0(round(fitavgDataStrat$pow, 3), "±", round(fitavgDataStrat$powSE, 4))
+fitavgDataStrat$cConf <- paste0(round(fitavgDataStrat$c, 3), "±", round(fitavgDataStrat$cSE, 4))
+
+createTable <- function(tableData){
+  tableData %>% 
+    pivot_wider(id_cols = power, names_from = C, values_from = c(cConf, pConf)) %>%
+    kable(align = rep("c", 5), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>%
+    kable_classic() %>% 
+    add_header_above(c("Reward power", rep(c("Drift slope = 0.5", "Drift slope = 4"), 2))) %>%
+    add_header_above(c(" ", "c"=2, "p"=2)) %>% 
+    kable_styling(latex_options = "HOLD_position")
+}
+```
+
+Lets see the fits for the Gaussian kernel:
+
+```{r}
+GaussianFits <- fitavgDataStrat %>% filter(kernelMethod == "gaussian")
+createTable(GaussianFits)
+```
+
+For the Epanechnikov kernel:
+
+```{r}
+epanechnikovFits <- fitavgDataStrat %>% filter(kernelMethod == "epanechnikov")
+createTable(epanechnikovFits)
+```
+
+For the tophat kernel:
+
+```{r}
+tophatFits <- fitavgDataStrat %>% filter(kernelMethod == "tophat")
+createTable(tophatFits)
+```
+
+For the linear kernel:
+
+```{r}
+linearFits <- fitavgDataStrat %>% filter(kernelMethod == "linear")
+createTable(linearFits)
+```
+
+We can see from these tables that there are basically no difference in the fits and therefore the kernel method has no effect on the average cumulative regret.
+
+Lets see if all kernel methods are just as stable:
+
+```{r}
+ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
+  geom_line(aes(y=sdRegret, color=kernelMethod))+
+  labs(title = "Average regret for kernel methods",
+       y = "Average regret",
+       x = "Time horizon (T)",
+       color = "Kernel Method")+
+  facet_grid(power ~ C, scales = "free")
+```
+
+Here we also see that the standard deviation of the regret is almost the same for each of the kernel methods for the four combinations of the reward and drift functions, with the Gaussian kernel having a slightly lower standard deviation for most of the time horizons when the power is high for the reward function. However, this is such a small difference and it is not consistent for all time horizons, thus making it irrelevant which kernel method is chosen.
+
+For good measure, then lets also just quickly see if there is any change in the difference in number of decisions made made by the optimal strategy and the data-driven strategy, when changing kernel:
+
+```{r}
+ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
+  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=kernelMethod))+
+  labs(title = "Average regret for kernel methods",
+       y = "Average regret",
+       x = "Time horizon (T)",
+       color = "Kernel Method")+
+  facet_grid(power ~ C, scales = "free")
+```
+
+As expected we see that there is no difference in the average difference in number of decisions made by the optimal strategy and the data-driven strategy.
+
+# Different bandwidths
+
+## Different constants of the bandwidth
+In this section we explore how the bandwidth affects the kernel density estimation of the invariant density for the gaussian kernel.
+To do so we will try different constants for the bandwidth of the form:
+
+$$
+bw = \frac{a}{\sqrt{T}}, \quad a \in \{1, 5, 10\}
+$$
+```{r}
+avgBandwidthData <- MiseBandwidth %>% group_by(ST, C, bandwidth_a, bandwidth_p) %>% 
+  summarise(avgMisePdf = mean(MISEPdf),
+            seMisePdf = std.error(MISEPdf),
+            sdMisePdf = sd(MISEPdf),
+            .groups = "drop")
+
+avgBandwidthData$C = as.factor(avgBandwidthData$C)
+avgBandwidthData$bandwidth_a = as.factor(avgBandwidthData$bandwidth_a)
+avgBandwidthData$bandwidth_p = as.factor(avgBandwidthData$bandwidth_p)
+```
+
+```{r}
+avgData_a = avgBandwidthData %>% filter(bandwidth_a %in% c(1, 5, 10) & bandwidth_p == -1/2)
+
+ggplot(avgData_a, aes(x=ST, group=bandwidth_a))+
+  geom_line(aes(y=avgMisePdf, color=bandwidth_a))+
+  facet_wrap(~C, nrow = 2, scales = "free")+
+  ylab("Mean Integrated Squared Error (MISE)")+
+  xlab("Exploration time")+
+  ggtitle("MISE for the invariant density")+
+  labs(color = "a")
+```
+
+We can see that for low values of the drift slope coefficient, then the higher constant in the bandwidth makes the fit better for shorter exploration times on average. However, as the exploration time increases to about 100 time units, then there isn't really any difference in the fit for the different bandwidths. The increase in the constant of the bandwidth does however have a significant downside when the drift slope coefficient gets higher. Here we see that the increase in the constant of the bandwidth makes the fit worse for shorter exploration times and as the drift slope increases it takes longer time for a higher bandwidth constant to be able to have the same fit. 
+
+Lets see how stable the fit is for the different constants.
+
+```{r}
+ggplot(avgData_a, aes(x=ST, group=bandwidth_a))+
+  geom_line(aes(y=sdMisePdf, color=bandwidth_a))+
+  facet_wrap(~C, nrow = 2, scales = "fixed")+
+  ylab("Sd of Integrated Squared Error")+
+  xlab("Exploration time")+
+  ggtitle("Standard deviation of Integrated Squared Error for the invariant density")+
+  labs(color = "a")
+```
+
+Here we can see that for all drift slope coefficients the higher bandwidth constant makes the integrated squared error and therefore the fit more stable when the exploration time is low, but also that an exploration time of about 50 time units, then all of the bandwidths have the same stability of the integrated squared error and therefore the same stability of their fits to the true invariant density.
+
+## Different powers of the bandwidth
+Next we will see how changing the power of the bandwidth affects the Gaussian kernels ability to estimate the invariant density.
+
+Here we are looking at the bandwidths of the form:
+$$
+bw = T^{p}, \quad p \in \{-1/2, -1/4, -1/8\}
+$$
+
+```{r}
+avgData_p = avgBandwidthData %>% filter(bandwidth_p %in% c(-1/2, -1/4, -1/8) & bandwidth_a == 1)
+
+ggplot(avgData_p, aes(x=ST, group=bandwidth_p))+
+  geom_line(aes(y=avgMisePdf, color=bandwidth_p))+
+  facet_wrap(~C, nrow = 2, scales = "free")+
+  ylab("Mean Integrated Squared Error (MISE)")+
+  xlab("Exploration time")+
+  ggtitle("MISE for the invariant density")+
+  labs(color = "p")
+```
+
+Here we see again see that for low drift slope coefficients, the higher powers of the bandwidth are slightly better, but that the difference is so small that it wouldn't make much difference. However, when the drift slope coefficient increases, then the higher power of the bandwidth makes the fit worse to the point where within the 300 time units of exploring, the power of -0.125 never achieves a fit as good as the power of -0.5 with only 10 time units of exploring for a drift slope coefficient of 4.
+
+Lets look at the stability of estimates for the invariant density through the standard deviation of the integrated squared error:
+
+```{r}
+ggplot(avgData_p, aes(x=ST, group=bandwidth_p))+
+  geom_line(aes(y=sdMisePdf, color=bandwidth_p))+
+  facet_wrap(~C, nrow = 2, scales = "fixed")+
+  ylab("Sd of Integrated Squared Error")+
+  xlab("Exploration time")+
+  ggtitle("Standard deviation of Integrated Squared Error for the invariant density")+
+  labs(color = "p")
+```
+
+We can see that the higher bandwidth powers have a slight advantage in making the estimations more robust in terms of the standard deviation of the integrated squared error for short exploration times for all drift slope coefficients. However, it does not take much exploration before all powers have the same stability for all the different drift slopes. Also, we see that the estimations become more stable when the drift slope coefficient increases.
+
+## Scott and silverman methods
+
+So far it seems that the best bandwidth is of the form $\frac{1}{\sqrt{T}}$, but as a final test we look at bandwidths that take the data that it is fitting on into consideration. Here we will look at the "scott" and "silverman" methods and compare them to the bandwidth of $\frac{1}{\sqrt{T}}$:
+
+```{r}
+avgData_methods = avgBandwidthData %>% filter(bandwidth_a %in% c(1, "scott", "silverman") & bandwidth_p == -1/2)
+
+ggplot(avgData_methods, aes(x=ST, group=bandwidth_a))+
+  geom_line(aes(y=avgMisePdf, color=bandwidth_a))+
+  facet_wrap(~C, nrow = 2, scales = "free")+
+  ylab("Mean Integrated Squared Error (MISE)")+
+  xlab("Exploration time")+
+  ggtitle("MISE for the invariant density")+
+  labs(color = "Method")
+```
+
+We can see that the "scott" and "silverman" methods only improve the MISE for the a drift slope coefficient of 2, and that the improvement is so small that it probably would be irrelevant to the data-driven algorithm. For the small drift slope coefficients we see that there is no difference in the MISE when using the "scott" or "silverman" methods, and for the drift slope coefficient of 4, we see that the bandwidth of $\frac{1}{\sqrt{T}}$ has a slight advantage through all of the exploration times, but again with such a small difference, that it would be irrelevant to the algorithm. Lastly, we see that the standard bandwidth and the "scott" and "silverman" methods all improve their fit, when the drift slope coefficient increases making the invariant distribution more concentrated around 0.
+
+Lets look at the stability of these methods through the standard deviation of the integrated squared error:
+
+```{r}
+ggplot(avgData_methods, aes(x=ST, group=bandwidth_a))+
+  geom_line(aes(y=sdMisePdf, color=bandwidth_a))+
+  facet_wrap(~C, nrow = 2, scales = "free")+
+  ylab("Sd of Integrated Squared Error")+
+  xlab("Exploration time")+
+  ggtitle("Standard deviation of Integrated Squared Error for the invariant density")+
+  labs(color = "a")
+```
+
+Again we see that using the "scott" or "silverman" method does not improve the stability of the kernel density estimation and that all three bandwidth methods improve their stability, when the drift slope coefficient increases.
+
+
+

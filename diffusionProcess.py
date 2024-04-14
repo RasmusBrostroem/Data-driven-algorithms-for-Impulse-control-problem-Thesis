@@ -49,8 +49,8 @@ class DiffusionProcess():
                 t-values: the time steps, where simulated values were generated
         """
         N = int(T/dt) # number of time steps
-        x = np.zeros(N+1)
-        t = np.zeros(N+1)
+        x = np.zeros(N+1, dtype=object)
+        t = np.zeros(N+1, dtype=object)
         x[0] = x0
         t[0] = 0.0
 
@@ -77,7 +77,7 @@ class DiffusionProcess():
 
     def invariant_density(self, x):
         def integral(x):
-            f = lambda y: 2*self.b(y)/self.sigma(y)**2
+            f = lambda y: 2*self.b(y)/(self.sigma(y)**2)
             if isinstance(x, Iterable):
                 return np.array(list(map(partial(quad, f, 0, limit=100, epsabs = 1e-3), x)))[:, 0]
             return quad(f, 0, x, epsabs=1e-3, limit=100)[0]
@@ -86,6 +86,9 @@ class DiffusionProcess():
             return 1/(self.C_b_sigma_val*sigmas**2) * np.exp(integral(x))
         
         return 1/(self.C_b_sigma_val*self.sigma(x)**2) * np.exp(integral(x))
+    
+    def invariant_distribution(self, x):
+        return quad(self.invariant_density, -1000, x, epsabs=1e-3, limit=250, points=np.linspace(-5,5,3))[0]
 
     def xi(self, x):
         def inner_integral(y):
