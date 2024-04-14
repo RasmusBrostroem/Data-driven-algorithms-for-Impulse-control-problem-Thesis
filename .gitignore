@@ -209,3 +209,9 @@ rsconnect/
 
 # Neptune
 .neptune/
+
+# Simulated data
+SimulationData/
+
+#Images
+Images/
