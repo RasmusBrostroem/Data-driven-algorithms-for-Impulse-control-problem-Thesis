@@ -28,22 +28,24 @@ def time_function(func, args_list, repetitions=10):
     return average_time
 
 
-T=100
+# T=100
 
-print(1/np.sqrt(T))
-print(get_bandwidth(T))
+# diffPros = DiffusionProcess(generate_linear_drift(1, 0), sigma)
+# dataStrat = DataDrivenImpulseControl(generate_reward_func(1, 0.9), sigma)
+# dataStrat.bandwidth = 1/np.sqrt(T)
 
-# kernels = ["gaussian"]
-# Cs = [1/10, 1/2, 2, 4]
-# powers = [1]
-# zeroVals = [7/10]
-# As = [0]
+# cumulativeReward, S_t, thresholds_and_Sts, nrDecisions = dataStrat.simulate(diffpros=diffPros, T=T, dt=0.01)
+
+
+
+
+
+
+
 
 # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
 
-# argList = list(product(Cs, bandwidths))
-# for c, bandwidth_a_p in argList:
-#     print(f"C = {c}, bandwidth_a = {bandwidth_a_p[0]}, bandwidth_p = {bandwidth_a_p[1]}")
+
 
 
 
