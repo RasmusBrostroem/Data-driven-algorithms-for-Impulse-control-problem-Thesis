@@ -230,8 +230,8 @@ Lets see if all kernel methods are just as stable:
 ```{r}
 ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
   geom_line(aes(y=sdRegret, color=kernelMethod))+
-  labs(title = "Average regret for kernel methods",
-       y = "Average regret",
+  labs(title = "Standard deviation of regret for kernel methods",
+       y = "Standard deviation of regret",
        x = "Time horizon (T)",
        color = "Kernel Method")+
   facet_grid(power ~ C, scales = "free")
@@ -244,8 +244,8 @@ For good measure, then lets also just quickly see if there is any change in the 
 ```{r}
 ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
   geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=kernelMethod))+
-  labs(title = "Average regret for kernel methods",
-       y = "Average regret",
+  labs(title = "Average difference in decisions for kernel methods",
+       y = "Average difference in number of decisions",
        x = "Time horizon (T)",
        color = "Kernel Method")+
   facet_grid(power ~ C, scales = "free")
@@ -296,7 +296,7 @@ ggplot(avgData_a, aes(x=ST, group=bandwidth_a))+
   facet_wrap(~C, nrow = 2, scales = "fixed")+
   ylab("Sd of Integrated Squared Error")+
   xlab("Exploration time")+
-  ggtitle("Standard deviation of Integrated Squared Error for the invariant density")+
+  ggtitle("SD of Integrated Squared Error for the invariant density")+
   labs(color = "a")
 ```
 
@@ -318,7 +318,7 @@ ggplot(avgData_p, aes(x=ST, group=bandwidth_p))+
   facet_wrap(~C, nrow = 2, scales = "free")+
   ylab("Mean Integrated Squared Error (MISE)")+
   xlab("Exploration time")+
-  ggtitle("MISE for the invariant density")+
+  ggtitle("MISE for the invariant density for different powers of bandwidth")+
   labs(color = "p")
 ```
 
@@ -329,7 +329,7 @@ Lets look at the stability of estimates for the invariant density through the st
 ```{r}
 ggplot(avgData_p, aes(x=ST, group=bandwidth_p))+
   geom_line(aes(y=sdMisePdf, color=bandwidth_p))+
-  facet_wrap(~C, nrow = 2, scales = "fixed")+
+  facet_wrap(~C, nrow = 2, scales = "free")+
   ylab("Sd of Integrated Squared Error")+
   xlab("Exploration time")+
   ggtitle("Standard deviation of Integrated Squared Error for the invariant density")+
