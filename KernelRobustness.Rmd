@@ -22,8 +22,8 @@ library(kableExtra)
 ```
 
 ```{r}
-setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
-#setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 Misedata <- read.csv("./SimulationData/Kernels/KernelFunctions.csv")
 data <- read.csv("./SimulationData/Kernels/KernelStratiesData.csv")
 MiseBandwidth <- read.csv("./SimulationData/Kernels/MiseKernelBandwidth.csv")
@@ -32,9 +32,11 @@ MiseBandwidth <- read.csv("./SimulationData/Kernels/MiseKernelBandwidth.csv")
 # MISE for pdf
 
 First we can look at the mean integrated squared error (MISE) of the invariant density to see how changing the kernel affects the estimation of the true density. The reason, that we are looking at the MISE is that it gives a total overview of the risk associated with choice of kernel as it evaluates the deviations of the estimate to the true value over the whole support instead of evaluating it point wise. We are looking at four kernel methods: Epanechnikov, Gaussian, Linear (Uniform) and Tophat (Triangle) for four different drift functions:
+
 $$
 b(x) = -Cx, \quad C\in \{0.1, 0.5, 2, 4\}
 $$
+
 and for exploration time $S_T$ ranging from 10 to 300 with increments of 10. Each combination of kernel method, drift and exploration time is simulated 100 times and the average is calculated to approximate the MISE.
 
 ```{r}
@@ -49,13 +51,13 @@ AvgData$kernelMethod = as.factor(AvgData$kernelMethod)
 ```
 
 ```{r}
-ggplot(AvgData, aes(x=ST, group=C))+
-  geom_line(aes(y=avgMisePdf, color=C))+
-  facet_wrap(~kernelMethod, nrow = 2, scales = "fixed")+
+ggplot(AvgData, aes(x=ST, group=kernelMethod))+
+  geom_line(aes(y=avgMisePdf, color=kernelMethod))+
+  facet_wrap(~C, nrow = 2, scales = "free")+
   ylab("Mean Integrated Squared Error (MISE)")+
   xlab("Exploration time")+
   ggtitle("MISE for the invariant density")+
-  labs(color = "Drift slope")
+  labs(color = "Kernel Method")
 ```
 
 We can see that the choice of kernel method has little to no effect on the MISE for the different drift slopes. Each kernel method has almost the same trajectory when increasing the exploration time and it is only for the very short exploration time that the kernels deviate, where the Gaussian kernel seems to be the best choice of kernel function. Furthermore, we also see that the drift function affects the kernel methods ability to estimate the true invariant density, where a lower drift slope makes the estimated invariant density more inaccurate. The reason for this could have something to do with the fact that a higher drift slope makes the invariant density more concentrated around 0 (but why would this be better necessarily)?
@@ -63,13 +65,13 @@ We can see that the choice of kernel method has little to no effect on the MISE 
 Lets also see how the standard deviation of the integrated squared error changes with the choice of kernel function:
 
 ```{r}
-ggplot(AvgData, aes(x=ST, group=C))+
-  geom_line(aes(y=sdMisePdf, color=C))+
-  facet_wrap(~kernelMethod, nrow = 2, scales = "fixed")+
+ggplot(AvgData, aes(x=ST, group=kernelMethod))+
+  geom_line(aes(y=sdMisePdf, color=kernelMethod))+
+  facet_wrap(~C, nrow = 2, scales = "free")+
   ylab("Standard deviation of the Integrated Squared Error")+
   xlab("Exploration time")+
   ggtitle("SD of integrated squared error for the invariant density")+
-  labs(color = "Drift slope")
+  labs(color = "Kernel Method")
 ```
 
 The plot shows that the all kernels basically have the same stability, when it comes to estimating the invariant density as they have the same trajectory for the different kernels. We also see again that the choice of drift function affects the stability of the kernel methods ability to estimate the invariant density, where a smaller drift slope increases the variability in the estimates of the invariant density. However, we also see that when the exploration time increases, then all kernels methods for all drift functions becomes more and more stable to the point where there is virtually no difference in the estimates for different sample paths of the diffusion process. Thus, if the kernel methods get enough data from the exploration periods, then they will all have close to the same precision, when estimating the invariant density. 
@@ -119,10 +121,12 @@ We can therefore conclude that the estimation of the invariant distribution func
 
 # Different kernels effect on strategy
 Based the on the kernels ability to estimate the invariant density, then we wouldn't expect any difference in the performance of the algorithm, when changing kernel. Nonetheless, we still evaluate each kernel method presented above and their effect on the data-driven nonparametric algorithm. We do so by considering the drift functions:
+
 $$
 b(x) = -Cx, \quad C \in \{0.5, 4 \}
 $$
 and the reward functions:
+
 $$
 g(x) = 0.9 - |1-x|^p \quad p \in \{1, 5 \}
 $$
