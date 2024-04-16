@@ -22,8 +22,8 @@ library(kableExtra)
 ```
 
 ```{r}
-setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
-#setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 data <- read.csv("./SimulationData/DriftAndRewardData/DriftsAndRewards.csv")
 #test <- read.csv("./SimulationData/DriftAndRewardData/test.csv")
 ```
