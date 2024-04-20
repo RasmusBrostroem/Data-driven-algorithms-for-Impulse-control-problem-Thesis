@@ -15,11 +15,11 @@ from collections.abc import Iterable
 from diffusionProcess import DiffusionProcess, sigma, generate_linear_drift
 
 
-def get_bandwidth(T, a=1, p=-1/2):
+def get_bandwidth(ST, a=1, p=-1/2):
     if isinstance(a, str):
         return a
     
-    return a*T**p
+    return a*ST**p
 
 def reward(x):
     return 9/10 - np.abs(1-x)**(1)
@@ -86,6 +86,7 @@ class DataDrivenImpulseControl():
 
         # Kernel attributes
         self.kernel_method = "gaussian"
+        self.bandwidthFunc = lambda t: 1/np.sqrt(t)
         self.bandwidth = None
         self.bandwidth_start = 0.01
         self.bandwidth_end = 1
@@ -219,6 +220,7 @@ class DataDrivenImpulseControl():
                     reachedZeta = True
             
             if reachedZeta and X <= 0:
+                self.bandwidth = self.bandwidthFunc(S_t)
                 self.fit(data)
                 threshold = self.estimate_threshold()
                 thresholds_and_Sts.append((threshold,S_t))

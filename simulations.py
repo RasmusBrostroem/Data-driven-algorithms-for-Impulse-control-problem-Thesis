@@ -309,6 +309,7 @@ def simulate_dataDriven_vs_optimal(Ts,
     DataStrat.a = a
     DataStrat.M1 = M1
     DataStrat.kernel_method = kernel_method
+    DataStrat.bandwidthFunc = bandwidth_func
 
     run["AlgoParams"] = {
         "kernelMethod": DataStrat.kernel_method,
@@ -340,7 +341,6 @@ def simulate_dataDriven_vs_optimal(Ts,
         optNrdecisionsList = []
         regrets = []
         for T in Ts:
-            DataStrat.bandwidth = bandwidth_func(T)
             diffusionProcess.generate_noise(T, 0.01)
             dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
             if len(thresholds_and_Sts) >= 1:
@@ -373,16 +373,16 @@ def simulate_dataDriven_vs_optimal(Ts,
 
 if __name__ == "__main__":
     ### Simulating the robustness for changing models and reward function
-    # Ts = [100*i for i in range(1,51)]
-    # sims = 50
-    # powers = [1/2, 1, 2, 5]
-    # zeroVals = [7/10, 45/50, 99/100]
-    # Cs = [1/10, 1/2, 4]
-    # As = [0]
-    # argList = list(product(Cs, As, powers, zeroVals))
+    Ts = [100*i for i in range(1,51)]
+    sims = 50
+    powers = [3/4, 1, 2, 5]
+    zeroVals = [7/10, 45/50, 99/100]
+    Cs = [1/10, 1/2, 4]
+    As = [0]
+    argList = list(product(Cs, As, powers, zeroVals))
 
-    # #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
-    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
+    #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
+    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
 
     ### Simulating MISE for different kernels and different drift functions
     # STs = [10*i for i in range(1,31)]
@@ -423,21 +423,21 @@ if __name__ == "__main__":
     #                                                            neptune_tags=["StrategyVsOptimal", "Kernel Methods"]) for C, A, p, z, kernel in argList)
 
     ### Simulating MISE for different bandwidths and drift functions
-    STs = [10*i for i in range(1,31)]
-    sims = 100
-    kernels = ["gaussian"]
-    Cs = [1/10, 1/2, 2, 4]
-    bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
+    # STs = [10*i for i in range(1,31)]
+    # sims = 100
+    # kernels = ["gaussian"]
+    # Cs = [1/10, 1/2, 2, 4]
+    # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
 
-    argList = list(product(Cs, bandwidths))
-    Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
-                                              sims=sims,
-                                              C=C,
-                                              A=0,
-                                              power=1,
-                                              zeroVal=7/10,
-                                              kernel_method="gaussian",
-                                              bandwidth_a_p=bandwidth_a_p,
-                                              neptune_tags=["MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p in argList)
+    # argList = list(product(Cs, bandwidths))
+    # Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
+    #                                           sims=sims,
+    #                                           C=C,
+    #                                           A=0,
+    #                                           power=1,
+    #                                           zeroVal=7/10,
+    #                                           kernel_method="gaussian",
+    #                                           bandwidth_a_p=bandwidth_a_p,
+    #                                           neptune_tags=["MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p in argList)
 
     
