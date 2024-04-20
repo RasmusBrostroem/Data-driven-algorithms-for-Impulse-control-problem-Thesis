@@ -1,6 +1,7 @@
 from scipy.integrate import odeint, quad
 from diffusionProcess import drift, sigma, DiffusionProcess, generate_linear_drift
 from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func, get_bandwidth
+from simulations import simulate_optimal_strategy
 from time import time
 import numpy as np
 from collections.abc import Iterable
@@ -28,10 +29,7 @@ def time_function(func, args_list, repetitions=10):
     return average_time
 
 
-T=100
-
-print(1/np.sqrt(T))
-print(get_bandwidth(T))
+simulate_optimal_strategy(10, 0.01)
 
 # kernels = ["gaussian"]
 # Cs = [1/10, 1/2, 2, 4]
