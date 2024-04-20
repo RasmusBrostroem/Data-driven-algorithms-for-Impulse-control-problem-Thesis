@@ -1,6 +1,7 @@
 from scipy.integrate import odeint, quad
 from diffusionProcess import drift, sigma, DiffusionProcess, generate_linear_drift
 from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func, get_bandwidth
+from simulations import simulate_optimal_strategy
 from time import time
 import numpy as np
 from collections.abc import Iterable
@@ -41,19 +42,20 @@ def time_function(func, args_list, repetitions=10):
 
 
 
+simulate_optimal_strategy(10, 0.01)
 
 
 # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
 
-ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
-            (lambda t: t**(1/3), "T^(1/3)"),
-            (lambda t: t**(1/2), "T^(1/2)"),
-            (lambda t: t**(2/3), "T^(2/3)"),
-            (lambda t: t**(3/4), "T^(3/4)"),
-            (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
+# ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
+#             (lambda t: t**(1/3), "T^(1/3)"),
+#             (lambda t: t**(1/2), "T^(1/2)"),
+#             (lambda t: t**(2/3), "T^(2/3)"),
+#             (lambda t: t**(3/4), "T^(3/4)"),
+#             (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
 
-for st_form in ST_forms:
-    print(st_form[1])
+# for st_form in ST_forms:
+#     print(st_form[1])
 
 
 

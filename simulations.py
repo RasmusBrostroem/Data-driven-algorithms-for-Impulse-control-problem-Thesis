@@ -48,9 +48,17 @@ def simulate_optimal_strategy(T=10, dt=0.01):
     nrDecisions = optStrat.nrDecisions
     print(f"Total reward was: {total_reward}")
     print(f"Number of decisions made: {nrDecisions}")
+    plt.rcParams["figure.figsize"] = [12,6]
     for t, x in zip(t_plot, x_plot):
-        plt.plot(t,x, color="b")
-        
+        plt.plot(t,x, color="k", linewidth=1.0)
+        plt.plot(t, [optStrat.y_star for i in range(len(t))], "k--",linewidth=1.0)
+    
+    plt.xlabel("time (t)")
+    plt.ylabel("X")
+    plt.xticks([]) 
+    plt.yticks(np.arange(round(min(map(min, x_plot))*2)/2, round(max(map(max, x_plot))*2)/2+0.5, 0.5))
+    
+    plt.savefig("test.png",bbox_inches='tight')
     plt.show()
     return
 
