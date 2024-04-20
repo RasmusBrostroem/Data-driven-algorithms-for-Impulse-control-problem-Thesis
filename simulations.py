@@ -296,7 +296,7 @@ def simulate_dataDriven_vs_optimal(Ts,
                                    M1=0.000001,
                                    ST_form_and_text=(lambda t: t**(2/3), "T^(2/3)"),
                                    kernel_method="gaussian",
-                                   bandwidth_func = lambda T: 1/np.sqrt(T),
+                                   bandwidth_func = lambda t: 1/np.sqrt(t),
                                    neptune_tags=["StrategyVsOptimal"]):
     
     driftFunc = generate_linear_drift(C, A)
@@ -311,6 +311,7 @@ def simulate_dataDriven_vs_optimal(Ts,
     DataStrat.M1 = M1
     DataStrat.kernel_method = kernel_method
     DataStrat.bandwidthFunc = bandwidth_func
+    DataStrat.ST_form = ST_form_and_text[0]
 
     run["AlgoParams"] = {
         "kernelMethod": DataStrat.kernel_method,
@@ -344,7 +345,7 @@ def simulate_dataDriven_vs_optimal(Ts,
         regrets = []
         for T in Ts:
             diffusionProcess.generate_noise(T, 0.01)
-            dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01, ST_form=ST_form_and_text[0])
+            dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
             if len(thresholds_and_Sts) >= 1:
                 thresholds, Sts = zip(*thresholds_and_Sts)
                 if len(thresholds) == 1:
@@ -376,7 +377,7 @@ def simulate_dataDriven_vs_optimal(Ts,
 if __name__ == "__main__":
     ### Simulating the robustness for changing models and reward function
     Ts = [100*i for i in range(1,51)]
-    sims = 50
+    sims = 100
     powers = [3/4, 1, 2, 5]
     zeroVals = [7/10, 45/50, 99/100]
     Cs = [1/10, 1/2, 4]
@@ -384,7 +385,13 @@ if __name__ == "__main__":
     argList = list(product(Cs, As, powers, zeroVals))
 
     #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
-    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
+    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+                                                               sims=sims,
+                                                               C=C,
+                                                               A=A,
+                                                               power=p,
+                                                               zeroVal=z,
+                                                               neptune_tags=["Fixed DataStratVsOptimal", "ModelRobustness"]) for C, A, p, z in argList)
 
     ### Simulating MISE for different kernels and different drift functions
     # STs = [10*i for i in range(1,31)]

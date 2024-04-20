@@ -84,6 +84,9 @@ class DataDrivenImpulseControl():
         self.sigma = sigma
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
 
+        # Exploration form
+        self.ST_form = lambda t: t**(2/3)
+
         # Kernel attributes
         self.kernel_method = "gaussian"
         self.bandwidthFunc = lambda t: 1/np.sqrt(t)
@@ -197,7 +200,7 @@ class DataDrivenImpulseControl():
         result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-2})
         return result.x
     
-    def simulate(self, diffpros: DiffusionProcess, T: int, dt: float, ST_form: Callable = lambda t: t**(2/3)):
+    def simulate(self, diffpros: DiffusionProcess, T: int, dt: float):
         self.kde = None
         self.cdf = None
 
@@ -231,7 +234,7 @@ class DataDrivenImpulseControl():
                 nrDecisions += 1
                 cumulativeReward += self.g(X)
                 X = 0
-                if S_t < ST_form(t):
+                if S_t < self.ST_form(t):
                     exploring = True
             
             X = diffpros.step(X, t, dt)
