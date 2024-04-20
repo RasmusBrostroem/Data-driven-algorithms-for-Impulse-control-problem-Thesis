@@ -294,6 +294,7 @@ def simulate_dataDriven_vs_optimal(Ts,
                                    zeroVal,
                                    a=0.000001,
                                    M1=0.000001,
+                                   ST_form_and_text=(lambda t: t**(2/3), "T^(2/3)"),
                                    kernel_method="gaussian",
                                    bandwidth_func = lambda T: 1/np.sqrt(T),
                                    neptune_tags=["StrategyVsOptimal"]):
@@ -315,7 +316,8 @@ def simulate_dataDriven_vs_optimal(Ts,
         "kernelMethod": DataStrat.kernel_method,
         "bandwidthMethod": inspect.getsource(bandwidth_func),
         "a": DataStrat.a,
-        "M1": DataStrat.M1
+        "M1": DataStrat.M1,
+        "ST_form": ST_form_and_text[1]
     }
 
     run["ModelParams"] = {
@@ -342,7 +344,7 @@ def simulate_dataDriven_vs_optimal(Ts,
         regrets = []
         for T in Ts:
             diffusionProcess.generate_noise(T, 0.01)
-            dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+            dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01, ST_form=ST_form_and_text[0])
             if len(thresholds_and_Sts) >= 1:
                 thresholds, Sts = zip(*thresholds_and_Sts)
                 if len(thresholds) == 1:
@@ -439,5 +441,26 @@ if __name__ == "__main__":
     #                                           kernel_method="gaussian",
     #                                           bandwidth_a_p=bandwidth_a_p,
     #                                           neptune_tags=["MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p in argList)
+    
+    ### Simulating different exploration times
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # Cs = [1/2, 4]
+    # powers = [1, 5]
+    # ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
+    #             (lambda t: t**(1/3), "T^(1/3)"),
+    #             (lambda t: t**(1/2), "T^(1/2)"),
+    #             (lambda t: t**(2/3), "T^(2/3)"),
+    #             (lambda t: t**(3/4), "T^(3/4)"),
+    #             (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
 
+    # argList = list(product(Cs, powers, ST_forms))
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=C,
+    #                                                            A=0,
+    #                                                            power=p,
+    #                                                            zeroVal=0.9,
+    #                                                            ST_form_and_text=st_form,
+    #                                                            neptune_tags=["Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
     

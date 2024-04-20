@@ -197,7 +197,7 @@ class DataDrivenImpulseControl():
         result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-2})
         return result.x
     
-    def simulate(self, diffpros: DiffusionProcess, T: int, dt: float) -> float:
+    def simulate(self, diffpros: DiffusionProcess, T: int, dt: float, ST_form: Callable = lambda t: t**(2/3)):
         self.kde = None
         self.cdf = None
 
@@ -231,7 +231,7 @@ class DataDrivenImpulseControl():
                 nrDecisions += 1
                 cumulativeReward += self.g(X)
                 X = 0
-                if S_t < t**(2/3):
+                if S_t < ST_form(t):
                     exploring = True
             
             X = diffpros.step(X, t, dt)
