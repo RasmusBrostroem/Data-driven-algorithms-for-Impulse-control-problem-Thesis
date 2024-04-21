@@ -190,18 +190,18 @@ def simulate_MISE(STs,
         run[f"Metrics/Sim{s}/ST"].extend(values=STs)
         run[f"Metrics/Sim{s}/simNr"].extend(values=[s for _ in STs])
         MISE_pdf_list = []
-        #MISE_cdf_list = []
+        MISE_cdf_list = []
         for ST in STs:
-            DataStrat.bandwidth = get_bandwidth(T=ST**(3/2), a=bandwidth_a_p[0], p=bandwidth_a_p[1])
+            DataStrat.bandwidth = get_bandwidth(ST=ST, a=bandwidth_a_p[0], p=bandwidth_a_p[1])
             data, t = diffusionProcess.EulerMaruymaMethod(ST, 0.01, 0)
             DataStrat.fit(data)
             MISE_pdf = DataStrat.MISE_eval_pdf(diffusionProcess)
             MISE_pdf_list.append(MISE_pdf)
-            #MISE_cdf = DataStrat.MISE_eval_cdf(diffusionProcess)
-            #MISE_cdf_list.append(MISE_cdf)
+            MISE_cdf = DataStrat.MISE_eval_cdf(diffusionProcess)
+            MISE_cdf_list.append(MISE_cdf)
     
         run[f"Metrics/Sim{s}/MISEPdf"].extend(values=MISE_pdf_list, steps=STs)
-        #run[f"Metrics/Sim{s}/MISECdf"].extend(values=MISE_cdf_list, steps=STs)
+        run[f"Metrics/Sim{s}/MISECdf"].extend(values=MISE_cdf_list, steps=STs)
     
     run.stop()
 
@@ -376,40 +376,40 @@ def simulate_dataDriven_vs_optimal(Ts,
 
 if __name__ == "__main__":
     ### Simulating the robustness for changing models and reward function
-    Ts = [100*i for i in range(1,51)]
-    sims = 100
-    powers = [3/4, 1, 2, 5]
-    zeroVals = [7/10, 45/50, 99/100]
-    Cs = [1/10, 1/2, 4]
-    As = [0]
-    argList = list(product(Cs, As, powers, zeroVals))
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # powers = [3/4, 1, 2, 5]
+    # zeroVals = [7/10, 45/50, 99/100]
+    # Cs = [1/10, 1/2, 4]
+    # As = [0]
+    # argList = list(product(Cs, As, powers, zeroVals))
 
-    #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
-    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
-                                                               sims=sims,
-                                                               C=C,
-                                                               A=A,
-                                                               power=p,
-                                                               zeroVal=z,
-                                                               neptune_tags=["Fixed DataStratVsOptimal", "ModelRobustness"]) for C, A, p, z in argList)
+    # #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=C,
+    #                                                            A=A,
+    #                                                            power=p,
+    #                                                            zeroVal=z,
+    #                                                            neptune_tags=["Fixed DataStratVsOptimal", "ModelRobustness"]) for C, A, p, z in argList)
 
     ### Simulating MISE for different kernels and different drift functions
-    # STs = [10*i for i in range(1,31)]
-    # sims = 100
-    # kernels = ["gaussian", "epanechnikov", "linear", "tophat"]
-    # Cs = [1/10, 1/2, 2, 4]
-    # powers = [1]
-    # zeroVals = [7/10]
-    # As = [0]
-    # argList = list(product(Cs, As, powers, zeroVals, kernels))
-    # Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
-    #                                           sims=sims,
-    #                                           C=C,
-    #                                           A=A,
-    #                                           power=p,
-    #                                           zeroVal=z,
-    #                                           kernel_method=kernel,
-    #                                           neptune_tags=["MISE", "Kernel Methods"]) for C, A, p, z, kernel in argList)
+    STs = [10*i for i in range(1,31)]
+    sims = 100
+    kernels = ["gaussian", "epanechnikov", "linear", "tophat"]
+    Cs = [1/10, 1/2, 2, 4]
+    powers = [1]
+    zeroVals = [7/10]
+    As = [0]
+    argList = list(product(Cs, As, powers, zeroVals, kernels))
+    Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
+                                              sims=sims,
+                                              C=C,
+                                              A=A,
+                                              power=p,
+                                              zeroVal=z,
+                                              kernel_method=kernel,
+                                              neptune_tags=["Fixed MISE", "Kernel Methods"]) for C, A, p, z, kernel in argList)
 
     ### Simulating the robustness for different kernels
     # Ts = [100*i for i in range(1,51)]
@@ -436,7 +436,7 @@ if __name__ == "__main__":
     # sims = 100
     # kernels = ["gaussian"]
     # Cs = [1/10, 1/2, 2, 4]
-    # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
+    # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]] # Should also try log(T)^2/sqrt(T)
 
     # argList = list(product(Cs, bandwidths))
     # Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
