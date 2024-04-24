@@ -15,7 +15,10 @@ from collections.abc import Iterable
 from diffusionProcess import DiffusionProcess, sigma, generate_linear_drift
 
 
-def get_bandwidth(ST, a=1, p=-1/2):
+def get_bandwidth(ST, a=1, p=-1/2, log=False):
+    if log:
+        return np.log(ST)**2 / np.sqrt(ST)
+    
     if isinstance(a, str):
         return a
     
