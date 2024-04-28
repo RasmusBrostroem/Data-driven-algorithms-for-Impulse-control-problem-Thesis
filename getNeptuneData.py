@@ -80,25 +80,25 @@ def download_threshold_data(ids: list[str], file_name: str):
 
 if __name__ == "__main__":
     ### Download DriftsAndReward data
-    id_list = [f"DIF-{i}" for i in range(335, 371)]
-    download_neptune_data(ids=id_list, file_name="DriftsAndRewards")
-    download_threshold_data(id_list, "DriftsAndRewardsThresholds")
+    # id_list = [f"DIF-{i}" for i in range(335, 371)]
+    # download_neptune_data(ids=id_list, file_name="DriftsAndRewards")
+    # download_threshold_data(id_list, "DriftsAndRewardsThresholds")
 
-    # ### Download Kernel methods MISE data
-    # id_list = [f"DIF-{i}" for i in range(371, 387)]
-    # download_neptune_data(ids=id_list, file_name="MiseKernelFunctions")
+    ### Download Kernel methods MISE data
+    id_list = [f"DIF-{i}" for i in range(371, 387)]
+    download_neptune_data(ids=id_list, file_name="MiseKernelFunctions")
 
-    # ### Download Optimal vs data-start with different Kernel strategies
-    # id_list = [f"DIF-{i}" for i in range(387, 403)]
-    # download_neptune_data(ids=id_list, file_name="KernelStrategiesData")
+    ### Download Optimal vs data-start with different Kernel strategies
+    id_list = [f"DIF-{i}" for i in range(387, 403)]
+    download_neptune_data(ids=id_list, file_name="KernelStrategiesData")
 
-    # ### Download Kernel bandwidths MISE data
-    # id_list = [f"DIF-{i}" for i in range(409, 441)]
-    # download_neptune_data(ids=id_list, file_name="MiseKernelBandwidth")
+    ### Download Kernel bandwidths MISE data
+    id_list = [f"DIF-{i}" for i in range(409, 441)]
+    download_neptune_data(ids=id_list, file_name="MiseKernelBandwidth")
 
-    # ### Download Optimal vs data-strat with different exploration forms
-    # id_list = [f"DIF-{i}" for i in range(441, 465)]
-    # download_neptune_data(ids=id_list, file_name="ExplorationFormsStrategiesData")
+    ### Download Optimal vs data-strat with different exploration forms
+    id_list = [f"DIF-{i}" for i in range(441, 465)]
+    download_neptune_data(ids=id_list, file_name="ExplorationFormsStrategiesData")
 
 
 
