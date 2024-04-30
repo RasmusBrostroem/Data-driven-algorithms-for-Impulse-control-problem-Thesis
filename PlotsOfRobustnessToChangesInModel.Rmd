@@ -34,7 +34,7 @@ b(x) = -cx, \quad \text{with } c\in \{0.1, 0.5, 4\}
 $$
 and reward functions of the form:
 $$
-g(x) = a-|1-x|^p, \quad \text{with } p\in \{0.5, 1, 2, 5\}, \text{ and } a\in \{0.7, 0.9, 0.99\}
+g(x) = a-|1-x|^p, \quad \text{with } p\in \{0.75, 1, 2, 5\}, \text{ and } a\in \{0.7, 0.9, 0.99\}
 $$
 Each combination of drift function and reward function is simulated 100 times.
 
@@ -46,7 +46,8 @@ avgYStartCs <- data %>% group_by(C) %>% summarise(avgOptThreshold = mean(y_star)
 
 avgYStartCs
 ```
-Here we see that on average the higher the linear coefficient is for the drift the lower the the optimal threshold is, which corresponds with how it affects the expected hitting times. As the linear coefficient increases, the expected hitting times goes from having linear growth to an exponential growth in the interval $[0, \zeta]$, meaning that on average it takes way too long for the process to get to certain values, and though the maximum reward might be achieved by stopping the process at a higher value it isn't beneficial, since the agent is able to stop the process several times and get the same cumulative reward with a lower threshold.
+
+Here we see that on average the higher the linear coefficient is for the drift the lower the the optimal threshold is, which corresponds with how it affects the expected hitting times. As the linear coefficient increases, the expected hitting times goes from having linear growth to an exponential growth in the interval $[0, \zeta]$, meaning that on average it takes way too long for the process to get to certain values, and though the maximum payoff might be achieved by stopping the process at a higher value it isn't beneficial, since the agent is able to stop the process several times and get the same cumulative reward with a lower threshold.
 
 To see the general impact of the drift function on the data-driven algorithm I will look at the impact of the different drift coefficients over all of the reward functions first. Therefore, I group over all the different time horizons and the different coefficients for C.
 
@@ -77,6 +78,7 @@ ggplot(driftAvgData, aes(x=T, group=C))+
   ggtitle("Average regret for different linear drift functions")+
   labs(color = "Drift slope")
 ```
+
 Here we see that the higher the linear drift, the higher the average regret is and the regret starts to take on the shape of the upper bound for the cumulative regret, while lower values of the slope coefficient for the linear drift makes the average regret have the form of the lower bound.
 
 To get a better idea of how the exponents for the regret per time is changing, then we can use the log-log plot, which allows us to compare the exponents and the constant factor affecting the relationship between the average regret and the time horizon.
@@ -89,12 +91,14 @@ ggplot(driftAvgData, aes(x=log(T), group=C))+
   labs(color = "Drift slope")
 ```
 
-Here we see that increasing the slope of the drift does not really change the order of the regret, since all lines seem to have the same slope, but it does change the constant factor, since the lines have different interceptions.
+Here we see that increasing the slope of the drift does not really change the order of the regret when the drift slope coefficient is between 0.1 and 0.5, since the lines seem to have the same slope. However, we do see a small decrease in the slope compared to the two other lines, when we increase the drift slope coefficient to 4. Though the biggest difference is the change in the constant factor, which we see by the lines having different interceptions.
 
 To see how the changing slope of the drift function affects the relationship between the average cumulative regret and the time horizon, we can use non-linear least squares to fit curve:
+
 $$
 R = c\cdot T^p
 $$
+
 ```{r}
 fitDriftData <- driftAvgData %>% group_by(C) %>% 
 summarise(
@@ -108,7 +112,8 @@ summarise(
 
 fitDriftData
 ```
-Here we do see a small decrease in the power of the fit when increasing the drift slope coefficient, but the greatest impact is on the constant factor $c$, which drastically increases with the increase in the slope coefficient of the drift function.
+
+Here we do see a small decrease in the power of the fit when increasing the drift slope coefficient, but the greatest impact is on the constant factor $c$, which drastically increases with the increase in the slope coefficient of the drift function. Thus, the regret is highest for a larger drift slope coefficient, but it would become smaller for large time horizons.
 
 Lets look at the variability of the regret through the variance of the regret for the three different drift slopes and how it changes with increasing T.
 
@@ -267,7 +272,8 @@ summarise(
 
 fitPowerData
 ```
-Here we see that the power of the fit doesn't really change for the powers $1, 2, 5$ of the reward function but that it does change when we decrease the power of the reward function to $1/2$. However, the effect isn't large, and we see that the largest effect to the fit is the increase in the constant $c$ when we increase the the power of the reward function.
+
+Here we see that the power of the fit doesn't really change for the powers $1, 2, 5$ of the reward function but that it does change when we decrease the power of the reward function to $3/4$. However, the effect isn't large, and we see that the largest effect to the fit is the increase in the constant $c$ when we increase the the power of the reward function.
 
 - We can consider looking at the residuals to see how well the fit actually is and if this fit makes sense.
 
