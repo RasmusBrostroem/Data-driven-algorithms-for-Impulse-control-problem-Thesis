@@ -148,7 +148,7 @@ def simulate_MISE(STs,
                   a=0.000001,
                   M1=0.000001,
                   kernel_method="gaussian",
-                  bandwidth_a_p=[1, -1/2],
+                  bandwidth_a_p_log=[1, -1/2, False],
                   neptune_tags=["MISE"]):
     
     driftFunc = generate_linear_drift(C, A)
@@ -169,8 +169,9 @@ def simulate_MISE(STs,
         "bandwidthMethod": inspect.getsource(get_bandwidth),
         "a": DataStrat.a,
         "M1": DataStrat.M1,
-        "bandwidth_a": bandwidth_a_p[0],
-        "bandwidth_p": bandwidth_a_p[1]
+        "bandwidth_a": bandwidth_a_p_log[0],
+        "bandwidth_p": bandwidth_a_p_log[1],
+        "bandiwdth_log": bandwidth_a_p_log[2]
     }
 
     run["ModelParams"] = {
@@ -190,18 +191,18 @@ def simulate_MISE(STs,
         run[f"Metrics/Sim{s}/ST"].extend(values=STs)
         run[f"Metrics/Sim{s}/simNr"].extend(values=[s for _ in STs])
         MISE_pdf_list = []
-        #MISE_cdf_list = []
+        # MISE_cdf_list = []
         for ST in STs:
-            DataStrat.bandwidth = get_bandwidth(T=ST**(3/2), a=bandwidth_a_p[0], p=bandwidth_a_p[1])
+            DataStrat.bandwidth = get_bandwidth(ST=ST, a=bandwidth_a_p_log[0], p=bandwidth_a_p_log[1], log=bandwidth_a_p_log[2])
             data, t = diffusionProcess.EulerMaruymaMethod(ST, 0.01, 0)
             DataStrat.fit(data)
             MISE_pdf = DataStrat.MISE_eval_pdf(diffusionProcess)
             MISE_pdf_list.append(MISE_pdf)
-            #MISE_cdf = DataStrat.MISE_eval_cdf(diffusionProcess)
-            #MISE_cdf_list.append(MISE_cdf)
+            # MISE_cdf = DataStrat.MISE_eval_cdf(diffusionProcess)
+            # MISE_cdf_list.append(MISE_cdf)
     
         run[f"Metrics/Sim{s}/MISEPdf"].extend(values=MISE_pdf_list, steps=STs)
-        #run[f"Metrics/Sim{s}/MISECdf"].extend(values=MISE_cdf_list, steps=STs)
+        # run[f"Metrics/Sim{s}/MISECdf"].extend(values=MISE_cdf_list, steps=STs)
     
     run.stop()
 
@@ -296,7 +297,7 @@ def simulate_dataDriven_vs_optimal(Ts,
                                    M1=0.000001,
                                    ST_form_and_text=(lambda t: t**(2/3), "T^(2/3)"),
                                    kernel_method="gaussian",
-                                   bandwidth_func = lambda T: 1/np.sqrt(T),
+                                   bandwidth_func = lambda t: 1/np.sqrt(t),
                                    neptune_tags=["StrategyVsOptimal"]):
     
     driftFunc = generate_linear_drift(C, A)
@@ -310,6 +311,8 @@ def simulate_dataDriven_vs_optimal(Ts,
     DataStrat.a = a
     DataStrat.M1 = M1
     DataStrat.kernel_method = kernel_method
+    DataStrat.bandwidthFunc = bandwidth_func
+    DataStrat.ST_form = ST_form_and_text[0]
 
     run["AlgoParams"] = {
         "kernelMethod": DataStrat.kernel_method,
@@ -342,9 +345,8 @@ def simulate_dataDriven_vs_optimal(Ts,
         optNrdecisionsList = []
         regrets = []
         for T in Ts:
-            DataStrat.bandwidth = bandwidth_func(T)
             diffusionProcess.generate_noise(T, 0.01)
-            dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01, ST_form=ST_form_and_text[0])
+            dataReward, S_T, thresholds_and_Sts, DataStratNrDecisions = DataStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
             if len(thresholds_and_Sts) >= 1:
                 thresholds, Sts = zip(*thresholds_and_Sts)
                 if len(thresholds) == 1:
@@ -376,15 +378,21 @@ def simulate_dataDriven_vs_optimal(Ts,
 if __name__ == "__main__":
     ### Simulating the robustness for changing models and reward function
     # Ts = [100*i for i in range(1,51)]
-    # sims = 50
-    # powers = [1/2, 1, 2, 5]
+    # sims = 100
+    # powers = [3/4, 1, 2, 5]
     # zeroVals = [7/10, 45/50, 99/100]
     # Cs = [1/10, 1/2, 4]
     # As = [0]
     # argList = list(product(Cs, As, powers, zeroVals))
 
     # #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
-    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts, sims=sims, C=C, A=A, power=p, zeroVal=z) for C, A, p, z in argList)
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=C,
+    #                                                            A=A,
+    #                                                            power=p,
+    #                                                            zeroVal=z,
+    #                                                            neptune_tags=["Fixed DataStratVsOptimal", "ModelRobustness"]) for C, A, p, z in argList)
 
     ### Simulating MISE for different kernels and different drift functions
     # STs = [10*i for i in range(1,31)]
@@ -402,7 +410,7 @@ if __name__ == "__main__":
     #                                           power=p,
     #                                           zeroVal=z,
     #                                           kernel_method=kernel,
-    #                                           neptune_tags=["MISE", "Kernel Methods"]) for C, A, p, z, kernel in argList)
+    #                                           neptune_tags=["Fixed MISE", "Kernel Methods"]) for C, A, p, z, kernel in argList)
 
     ### Simulating the robustness for different kernels
     # Ts = [100*i for i in range(1,51)]
@@ -414,7 +422,6 @@ if __name__ == "__main__":
     # As = [0]
     # argList = list(product(Cs, As, powers, zeroVals, kernels))
 
-    # #simulate_dataDriven_vs_optimal(Ts=Ts, sims=sims, C=1/2, A=0, power=1, zeroVal=7/10)
     # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
     #                                                            sims=sims,
     #                                                            C=C,
@@ -422,14 +429,21 @@ if __name__ == "__main__":
     #                                                            power=p,
     #                                                            zeroVal=z,
     #                                                            kernel_method=kernel,
-    #                                                            neptune_tags=["StrategyVsOptimal", "Kernel Methods"]) for C, A, p, z, kernel in argList)
+    #                                                            neptune_tags=["Fixed StrategyVsOptimal", "Kernel Methods"]) for C, A, p, z, kernel in argList)
 
     ### Simulating MISE for different bandwidths and drift functions
     # STs = [10*i for i in range(1,31)]
     # sims = 100
     # kernels = ["gaussian"]
     # Cs = [1/10, 1/2, 2, 4]
-    # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
+    # bandwidths = [[1, -1/2, False],
+    #               [5, -1/2, False],
+    #               [10, -1/2, False],
+    #               [1, -1/4, False],
+    #               [1, -1/8, False],
+    #               ["scott", -1/2, False],
+    #               ["silverman", -1/2, False],
+    #               ["", "", True]]
 
     # argList = list(product(Cs, bandwidths))
     # Parallel(n_jobs=6)(delayed(simulate_MISE)(STs=STs,
@@ -439,8 +453,8 @@ if __name__ == "__main__":
     #                                           power=1,
     #                                           zeroVal=7/10,
     #                                           kernel_method="gaussian",
-    #                                           bandwidth_a_p=bandwidth_a_p,
-    #                                           neptune_tags=["MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p in argList)
+    #                                           bandwidth_a_p_log=bandwidth_a_p_log,
+    #                                           neptune_tags=["Fixed MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p_log in argList)
     
     ### Simulating different exploration times
     Ts = [100*i for i in range(1,51)]
@@ -462,5 +476,5 @@ if __name__ == "__main__":
                                                                power=p,
                                                                zeroVal=0.9,
                                                                ST_form_and_text=st_form,
-                                                               neptune_tags=["Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
+                                                               neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
     
