@@ -244,6 +244,116 @@ class DataDrivenImpulseControl():
             t += dt
 
         return cumulativeReward, S_t, thresholds_and_Sts, nrDecisions
+    
+    def simulate_using_exploitation_data(self, diffpros: DiffusionProcess, T: int, dt: float, p_of_exploitation: float = 0.1):
+        self.kde = None
+        self.cdf = None
+
+        exploration_data = []
+        exploitation_data = []
+        exploitation_data_tmp = []
+        X = 0
+        t = 0
+        S_t = 0
+        nrDecisions = 0
+        reachedZeta = False
+        exploring = True
+        threshold = None
+        cumulativeReward = 0
+        thresholds_and_Sts = []
+
+        MISE_pdf = None
+        MISE_cdf = None
+
+        while t < T:
+            if exploring:
+                exploration_data.append(X)
+                S_t += dt
+                if X >= self.zeta:
+                    reachedZeta = True
+            
+            if reachedZeta and X <= 0:
+                if p_of_exploitation == "all":
+                    data = exploration_data + exploitation_data
+                else:
+                    data = exploration_data + exploitation_data[-(round(len(exploration_data)/(1/p_of_exploitation - 1))):] if p_of_exploitation != 0 else exploration_data
+                self.bandwidth = self.bandwidthFunc(len(data)*dt)
+                self.fit(data)
+                threshold = self.estimate_threshold()
+                thresholds_and_Sts.append((threshold,S_t))
+                exploring = False
+                reachedZeta = False
+            
+            if not exploring:
+                exploitation_data_tmp.append(X)
+                if X >= threshold:
+                    exploitation_data += exploitation_data_tmp
+                    exploitation_data_tmp = []
+                    nrDecisions += 1
+                    cumulativeReward += self.g(X)
+                    X = 0
+                    if S_t < self.ST_form(t):
+                        exploring = True
+            
+            X = diffpros.step(X, t, dt)
+            t += dt
+
+        if self.kde:
+            MISE_pdf = self.MISE_eval_pdf(diffpros=diffpros)
+        if self.cdf:
+            MISE_cdf = self.MISE_eval_cdf(diffpros=diffpros)
+
+        return cumulativeReward, S_t, thresholds_and_Sts, nrDecisions, MISE_pdf, MISE_cdf
+    
+    def get_exploration_and_exploitation_data(self, diffpros: DiffusionProcess, T: int, dt: float):
+        self.kde = None
+        self.cdf = None
+
+        exploration_data = []
+        exploitation_data = []
+        exploitation_data_tmp = []
+        X = 0
+        t = 0
+        S_t = 0
+        nrDecisions = 0
+        reachedZeta = False
+        exploring = True
+        threshold = None
+        cumulativeReward = 0
+        thresholds_and_Sts = []
+
+        while t < T:
+            if exploring:
+                exploration_data.append(X)
+                S_t += dt
+                if X >= self.zeta:
+                    reachedZeta = True
+            
+            if reachedZeta and X <= 0:
+                self.bandwidth = self.bandwidthFunc(S_t)
+                self.fit(exploration_data)
+                threshold = self.estimate_threshold()
+                thresholds_and_Sts.append((threshold,S_t))
+                exploring = False
+                reachedZeta = False
+            
+            if not exploring:
+                exploitation_data_tmp.append(X)
+                if X >= threshold:
+                    exploitation_data += exploitation_data_tmp
+                    exploitation_data_tmp = []
+                    nrDecisions += 1
+                    cumulativeReward += self.g(X)
+                    X = 0
+                    if S_t < self.ST_form(t):
+                        exploring = True
+            
+            X = diffpros.step(X, t, dt)
+            t += dt
+
+        return exploration_data, exploitation_data
+    
+
 
 if __name__ == "__main__":
     pass
