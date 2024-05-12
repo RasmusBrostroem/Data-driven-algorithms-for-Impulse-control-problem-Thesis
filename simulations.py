@@ -372,7 +372,106 @@ def simulate_dataDriven_vs_optimal(Ts,
     
     run.stop()
 
+def simulate_dataDriven_vs_optimal_using_exploitation_data(Ts,
+                                                           sims,
+                                                           C,
+                                                           A,
+                                                           power,
+                                                           zeroVal,
+                                                           a=0.000001,
+                                                           M1=0.000001,
+                                                           ST_form_and_text=(lambda t: t**(2/3), "T^(2/3)"),
+                                                           kernel_method="gaussian",
+                                                           bandwidth_func = lambda t: 1/np.sqrt(t),
+                                                           p_of_exploitation_data = 0.1,
+                                                           neptune_tags=["StrategyVsOptimal"]):
+    
+    driftFunc = generate_linear_drift(C, A)
+    rewardFunc = generate_reward_func(power, zeroVal)
+    sigmaFunc = sigma
+    run = neptune.init_run(project='rasmusbrostroem/DiffusionControl', tags=neptune_tags)
+    runId = run["sys/id"].fetch()
+    diffusionProcess = DiffusionProcess(b=driftFunc, sigma=sigmaFunc)
+    OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=rewardFunc)
+    DataStrat = DataDrivenImpulseControl(rewardFunc=rewardFunc, sigma=sigmaFunc)
+    DataStrat.a = a
+    DataStrat.M1 = M1
+    DataStrat.kernel_method = kernel_method
+    DataStrat.bandwidthFunc = bandwidth_func
+    DataStrat.ST_form = ST_form_and_text[0]
 
+    run["AlgoParams"] = {
+        "kernelMethod": DataStrat.kernel_method,
+        "bandwidthMethod": inspect.getsource(bandwidth_func),
+        "a": DataStrat.a,
+        "M1": DataStrat.M1,
+        "ST_form": ST_form_and_text[1],
+        "Exploitation_data_percentage": p_of_exploitation_data
+    }
+
+    run["ModelParams"] = {
+        "driftFunc": inspect.getsource(diffusionProcess.b),
+        "C": C,
+        "A": A,
+        "diffusionCoef": inspect.getsource(diffusionProcess.sigma),
+        "rewardFunc": inspect.getsource(DataStrat.g),
+        "power": power,
+        "zeroVal": zeroVal,
+        "y_star": OptimalStrat.y_star,
+        "y1": DataStrat.y1,
+        "zeta": DataStrat.zeta
+    }
+
+    for s in range(sims):
+        run[f"Metrics/Sim{s}/T"].extend(values=Ts)
+        run[f"Metrics/Sim{s}/simNr"].extend(values=[s for _ in Ts])
+        S_Ts = []
+        dataRewards = []
+        dataNrDecisionsList = []
+        optRewards = []
+        optNrdecisionsList = []
+        regrets = []
+        MISE_pdf_list = []
+        MISE_cdf_list = []
+        for T in Ts:
+            diffusionProcess.generate_noise(T, 0.01)
+            strategyData = DataStrat.simulate_using_exploitation_data(diffpros=diffusionProcess, T=T, dt=0.01, p_of_exploitation=p_of_exploitation_data)
+            dataReward = strategyData[0]
+            S_T = strategyData[1]
+            thresholds_and_Sts = strategyData[2]
+            DataStratNrDecisions = strategyData[3]
+            MISE_pdf = strategyData[4]
+            MISE_cdf = strategyData[5]
+
+            if len(thresholds_and_Sts) >= 1:
+                thresholds, Sts = zip(*thresholds_and_Sts)
+                if len(thresholds) == 1:
+                    run[f"Metrics/Sim{s}/Thresholds/{T}"].append(value=thresholds[0], step=Sts[0])
+                else:
+                    run[f"Metrics/Sim{s}/Thresholds/{T}"].extend(values=thresholds, steps=Sts)
+
+            opt_reward, optNrDecisions = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+
+            S_Ts.append(S_T)
+            dataRewards.append(dataReward)
+            dataNrDecisionsList.append(DataStratNrDecisions)
+            optRewards.append(opt_reward)
+            optNrdecisionsList.append(optNrDecisions)
+            regrets.append(opt_reward-dataReward)
+            
+            MISE_pdf_list.append(MISE_pdf) if MISE_pdf else MISE_pdf_list.append(-1)
+            MISE_cdf_list.append(MISE_cdf) if MISE_cdf else MISE_cdf_list.append(-1)
+        
+        run[f"Metrics/Sim{s}/S_T"].extend(values=S_Ts, steps=Ts)
+        run[f"Metrics/Sim{s}/dataDriveReward"].extend(values=dataRewards, steps=Ts)
+        run[f"Metrics/Sim{s}/OptimalStratReward"].extend(values=optRewards, steps=Ts)
+        run[f"Metrics/Sim{s}/regret"].extend(values=regrets, steps=Ts)
+        run[f"Metrics/Sim{s}/optNrDecisions"].extend(values=optNrdecisionsList, steps=Ts)
+        run[f"Metrics/Sim{s}/dataStratNrDecisions"].extend(values=dataNrDecisionsList, steps=Ts)
+        run[f"Metrics/Sim{s}/MISE_pdf"].extend(values=MISE_pdf_list, steps=Ts)
+        run[f"Metrics/Sim{s}/MISE_cdf"].extend(values=MISE_cdf_list, steps=Ts)
+
+    run.stop()
 
 
 if __name__ == "__main__":
@@ -457,24 +556,44 @@ if __name__ == "__main__":
     #                                           neptune_tags=["Fixed MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p_log in argList)
     
     ### Simulating different exploration times
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # Cs = [1/2, 4]
+    # powers = [1, 5]
+    # ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
+    #             (lambda t: t**(1/3), "T^(1/3)"),
+    #             (lambda t: t**(1/2), "T^(1/2)"),
+    #             (lambda t: t**(2/3), "T^(2/3)"),
+    #             (lambda t: t**(3/4), "T^(3/4)"),
+    #             (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
+
+    # argList = list(product(Cs, powers, ST_forms))
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=C,
+    #                                                            A=0,
+    #                                                            power=p,
+    #                                                            zeroVal=0.9,
+    #                                                            ST_form_and_text=st_form,
+    #                                                            neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
+
+    ### Simulate using exploration data
     Ts = [100*i for i in range(1,51)]
     sims = 100
-    Cs = [1/2, 4]
-    powers = [1, 5]
-    ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
-                (lambda t: t**(1/3), "T^(1/3)"),
-                (lambda t: t**(1/2), "T^(1/2)"),
-                (lambda t: t**(2/3), "T^(2/3)"),
-                (lambda t: t**(3/4), "T^(3/4)"),
-                (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
+    powers = [3/4, 5]
+    zeroVals = [0.9]
+    Cs = [1/10, 4]
+    As = [0]
+    exploration_percentages = [0, 0.1, 0.25, 0.50, 0.75, "all"]
+    argList = list(product(Cs, As, powers, zeroVals, exploration_percentages))
 
-    argList = list(product(Cs, powers, ST_forms))
-    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
-                                                               sims=sims,
-                                                               C=C,
-                                                               A=0,
-                                                               power=p,
-                                                               zeroVal=0.9,
-                                                               ST_form_and_text=st_form,
-                                                               neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
+    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal_using_exploitation_data)(Ts=Ts,
+                                                                                       sims=sims,
+                                                                                       C=C,
+                                                                                       A=A,
+                                                                                       power=p,
+                                                                                       zeroVal=z,
+                                                                                       p_of_exploitation_data=exploi_percent,
+                                                                                       neptune_tags=["DataStratUsingExploitationData"]) for 
+                                                                                                        C, A, p, z, exploi_percent in argList)
     
