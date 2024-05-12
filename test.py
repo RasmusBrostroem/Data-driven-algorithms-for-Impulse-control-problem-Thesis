@@ -1,6 +1,7 @@
 from scipy.integrate import odeint, quad
 from diffusionProcess import drift, sigma, DiffusionProcess, generate_linear_drift
-from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func
+from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func, get_bandwidth
+from simulations import simulate_optimal_strategy
 from time import time
 import numpy as np
 from collections.abc import Iterable
@@ -28,13 +29,96 @@ def time_function(func, args_list, repetitions=10):
     return average_time
 
 
-powers = [1/2, 1, 2, 5]
-zeroVals = [7/10, 45/50, 99/100]
-Cs = [1/5, 1/2, 1, 4]
-As = [0]
-argList = list(product(Cs, As, powers, zeroVals))
+# T=100
 
-plot_reward_xi_obj(1/2, 2, 0.2, 1, 7/10)
+# diffPros = DiffusionProcess(generate_linear_drift(1, 0), sigma)
+# dataStrat = DataDrivenImpulseControl(generate_reward_func(1, 0.9), sigma)
+# dataStrat.bandwidth = 1/np.sqrt(T)
+
+# cumulativeReward, S_t, thresholds_and_Sts, nrDecisions = dataStrat.simulate(diffpros=diffPros, T=T, dt=0.01)
+
+
+
+
+
+
+simulate_optimal_strategy(10, 0.01)
+
+
+# bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
+
+# ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
+#             (lambda t: t**(1/3), "T^(1/3)"),
+#             (lambda t: t**(1/2), "T^(1/2)"),
+#             (lambda t: t**(2/3), "T^(2/3)"),
+#             (lambda t: t**(3/4), "T^(3/4)"),
+#             (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
+
+# for st_form in ST_forms:
+#     print(st_form[1])
+
+
+
+
+
+# diff = DiffusionProcess(b=generate_linear_drift(0.1, 0), sigma=sigma)
+
+# dataStrat = DataDrivenImpulseControl(rewardFunc=generate_reward_func(1, 0.7), sigma=sigma)
+# dataStrat.bandwidth = 1/np.sqrt(300**(3/2))
+# dataStrat.kernel_method = "linear"
+# ST = 100
+# band = 1/np.sqrt(ST**(3/2))
+# data, t = diff.EulerMaruymaMethod(ST, 0.01, 0)
+# data = list(data)
+# y1, zeta = get_y1_and_zeta(generate_reward_func(1, 0.7))
+# vals = np.linspace(-10, 10, 5000)
+
+# dataStrat.fit(data=data)
+# f = lambda x: (dataStrat.pdf_eval(x)-diff.invariant_density(x))**2
+# M = [f(v) for v in vals]
+# print(sum(M)/(5000/20))
+# m3 = dataStrat.MISE_eval_pdf(diff)
+# print(m3)
+# M1 = quad(f, -100, 100, limit=2500, epsabs=1e-3, points=np.linspace(-5, 5, 1000))
+# print(M1)
+# plt.plot(vals, M)
+# plt.show()
+
+
+
+# t1 = time()
+# pdfVals = [dataStrat.pdf_eval(v) for v in vals]
+# t2 = time()
+# pdfInterVals = [dataStrat.pdf_eval_interpolate(v) for v in vals]
+# t3 = time()
+# fs = [diff.invariant_density(v) for v in vals]
+
+# print(f"It took {t2-t1} to evaluate with normal pdf")
+# print(f"It took {t3-t2} to evaluate with interpolation")
+
+# plt.plot(vals, pdfVals, label="pdf")
+# plt.plot(vals, pdfInterVals, label="interpolation")
+# plt.legend()
+# plt.show()
+# # plt.plot(vals, pdfInterVals, label="Sklearn")
+# # plt.plot(vals, fs, label="True")
+# # plt.legend()
+# # plt.show()
+
+# print(f"Evaluation at 1 for pdf = {dataStrat.pdf_eval(0.5)}")
+# print(f"Evaluation at 1 for interpolation = {dataStrat.pdf_eval_interpolate(0.5)}")
+# print(f"True value at 1 = {diff.invariant_density(1)}")
+
+
+#cumulativeReward, S_t, thresholds_and_Sts, nrDecisions = dataStrat.simulate(diff, 200, 0.01)
+
+# powers = [1/2, 1, 2, 5]
+# zeroVals = [7/10, 45/50, 99/100]
+# Cs = [1/5, 1/2, 1, 4]
+# As = [0]
+# argList = list(product(Cs, As, powers, zeroVals))
+
+# plot_reward_xi_obj(1/2, 2, 0.2, 1, 7/10)
 
 # d = generate_linear_drift(1/2, 0)
 # r = generate_reward_func(1, 7/10)
