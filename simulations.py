@@ -580,9 +580,9 @@ if __name__ == "__main__":
     ### Simulate using exploration data
     Ts = [100*i for i in range(1,51)]
     sims = 100
-    powers = [3/4, 5]
+    powers = [1, 5]
     zeroVals = [0.9]
-    Cs = [1/10, 4]
+    Cs = [0.5, 4]
     As = [0]
     exploration_percentages = [0, 0.1, 0.25, 0.50, 0.75, "all"]
     argList = list(product(Cs, As, powers, zeroVals, exploration_percentages))
