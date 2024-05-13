@@ -119,9 +119,9 @@ Lets look at the variability of the regret through the variance of the regret fo
 
 ```{r}
 ggplot(driftAvgData, aes(x=T, group=C))+
-  geom_line(aes(y=varRegret, color=C))+
-  ylab("Variance of regret")+
-  ggtitle("Variance of regret for different linear drift functions")+
+  geom_line(aes(y=sdRegret, color=C))+
+  ylab("SD of regret")+
+  ggtitle("SD of regret for different linear drift functions")+
   labs(color = "Drift slope")
 ```
 
@@ -136,6 +136,7 @@ dataPerTime <- data %>% mutate(regretPerTime = regret/T)
 driftAvgDataPerTime <- dataPerTime %>% group_by(T, C) %>% 
                           summarise(avgRegret = mean(regretPerTime),
                                     seRegret = std.error(regretPerTime),
+                                    sdRegret = sd(regretPerTime),
                                     varRegret = var(regretPerTime),
                                     .groups = "drop")
 
@@ -158,7 +159,7 @@ Lets also look at the variance:
 
 ```{r}
 ggplot(driftAvgDataPerTime, aes(x=T, group=C))+
-  geom_line(aes(y=varRegret, color=C))+
+  geom_line(aes(y=sdRegret, color=C))+
   ylab("Variance of regret per time unit")+
   ggtitle("Variance of regret per time unit for different linear drift functions")+
   labs(color = "Drift slope")
@@ -216,6 +217,7 @@ Here we see that a lower power, meaning a more steep reward function increases t
 powerAvgData <- data %>% group_by(T, power) %>% 
                           summarise(avgRegret = mean(regret),
                                     seRegret = std.error(regret),
+                                    sdRegret = sd(regret),
                                     varRegret = var(regret),
                                     avgST = mean(S_T),
                                     seST = std.error(S_T),
@@ -277,13 +279,13 @@ Here we see that the power of the fit doesn't really change for the powers $1, 2
 
 - We can consider looking at the residuals to see how well the fit actually is and if this fit makes sense.
 
-Lets see how the power of the reward functions influences the variance of the regret.
+Lets see how the power of the reward functions influences the standard deviation of the regret.
 
 ```{r}
 ggplot(powerAvgData, aes(x=T, group=power))+
-  geom_line(aes(y=varRegret, color=power))+
-  ylab("Variance of regret")+
-  ggtitle("Variance of regret for different powers of the reward function")+
+  geom_line(aes(y=sdRegret, color=power))+
+  ylab("SD of regret")+
+  ggtitle("SD of regret for different powers of the reward function")+
   labs(color = "Power")
 ```
 
@@ -305,8 +307,8 @@ powerAvgDataPerTime$power = as.factor(powerAvgDataPerTime$power)
 ```{r}
 ggplot(powerAvgDataPerTime, aes(x=T, group=power))+
   geom_line(aes(y=avgRegret, color=power))+
-  geom_line(aes(y=avgRegret + 1.96*seRegret))+
-  geom_line(aes(y=avgRegret - 1.96*seRegret))+
+  # geom_line(aes(y=avgRegret + 1.96*seRegret))+
+  # geom_line(aes(y=avgRegret - 1.96*seRegret))+
   ylab("Average regret per time unit")+
   ggtitle("Average regret per time unit for different powers of reward function")+
   labs(color = "Power")
