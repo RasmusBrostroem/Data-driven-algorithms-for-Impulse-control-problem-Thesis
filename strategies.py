@@ -15,11 +15,14 @@ from collections.abc import Iterable
 from diffusionProcess import DiffusionProcess, sigma, generate_linear_drift
 
 
-def get_bandwidth(T, a=1, p=-1/2):
+def get_bandwidth(ST, a=1, p=-1/2, log=False):
+    if log:
+        return np.log(ST)**2 / np.sqrt(ST)
+    
     if isinstance(a, str):
         return a
     
-    return a*T**p
+    return a*ST**p
 
 def reward(x):
     return 7/10 - np.abs(1-x)**(1)
@@ -84,8 +87,12 @@ class DataDrivenImpulseControl():
         self.sigma = sigma
         self.y1, self.zeta = get_y1_and_zeta(rewardFunc)
 
+        # Exploration form
+        self.ST_form = lambda t: t**(2/3)
+
         # Kernel attributes
         self.kernel_method = "gaussian"
+        self.bandwidthFunc = lambda t: 1/np.sqrt(t)
         self.bandwidth = None
         self.bandwidth_start = 0.01
         self.bandwidth_end = 1
@@ -196,7 +203,7 @@ class DataDrivenImpulseControl():
         result = minimize_scalar(obj, bounds=(self.y1-eps, self.zeta+eps), method="bounded", options={'xatol': 1e-2})
         return result.x
     
-    def simulate(self, diffpros: DiffusionProcess, T: int, dt: float, ST_form: Callable = lambda t: t**(2/3)):
+    def simulate(self, diffpros: DiffusionProcess, T: int, dt: float):
         self.kde = None
         self.cdf = None
 
@@ -219,6 +226,7 @@ class DataDrivenImpulseControl():
                     reachedZeta = True
             
             if reachedZeta and X <= 0:
+                self.bandwidth = self.bandwidthFunc(S_t)
                 self.fit(data)
                 threshold = self.estimate_threshold()
                 thresholds_and_Sts.append((threshold,S_t))
@@ -229,7 +237,7 @@ class DataDrivenImpulseControl():
                 nrDecisions += 1
                 cumulativeReward += self.g(X)
                 X = 0
-                if S_t < ST_form(t):
+                if S_t < self.ST_form(t):
                     exploring = True
             
             X = diffpros.step(X, t, dt)
