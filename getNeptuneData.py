@@ -84,21 +84,26 @@ if __name__ == "__main__":
     # download_neptune_data(ids=id_list, file_name="DriftsAndRewards")
     # download_threshold_data(id_list, "DriftsAndRewardsThresholds")
 
-    ### Download Kernel methods MISE data
-    id_list = [f"DIF-{i}" for i in range(371, 387)]
-    download_neptune_data(ids=id_list, file_name="MiseKernelFunctions")
+    # ### Download Kernel methods MISE data
+    # id_list = [f"DIF-{i}" for i in range(371, 387)]
+    # download_neptune_data(ids=id_list, file_name="MiseKernelFunctions")
 
-    ### Download Optimal vs data-start with different Kernel strategies
-    id_list = [f"DIF-{i}" for i in range(387, 403)]
-    download_neptune_data(ids=id_list, file_name="KernelStrategiesData")
+    # ### Download Optimal vs data-start with different Kernel strategies
+    # id_list = [f"DIF-{i}" for i in range(387, 403)]
+    # download_neptune_data(ids=id_list, file_name="KernelStrategiesData")
 
-    ### Download Kernel bandwidths MISE data
-    id_list = [f"DIF-{i}" for i in range(409, 441)]
-    download_neptune_data(ids=id_list, file_name="MiseKernelBandwidth")
+    # ### Download Kernel bandwidths MISE data
+    # id_list = [f"DIF-{i}" for i in range(409, 441)]
+    # download_neptune_data(ids=id_list, file_name="MiseKernelBandwidth")
 
-    ### Download Optimal vs data-strat with different exploration forms
-    id_list = [f"DIF-{i}" for i in range(441, 465)]
-    download_neptune_data(ids=id_list, file_name="ExplorationFormsStrategiesData")
+    # ### Download Optimal vs data-strat with different exploration forms
+    # id_list = [f"DIF-{i}" for i in range(441, 465)]
+    # download_neptune_data(ids=id_list, file_name="ExplorationFormsStrategiesData")
+
+    ### Download using exploitation data
+    id_list = ["DIF-488", "DIF-489", "DIF-490", "DIF-492"] + [f"DIF-{i}" for i in range(497, 509)]
+    download_neptune_data(ids=id_list, file_name="UsingExploitationData")
+    download_threshold_data(id_list, "UsingExploitationThresholds")
 
 
 
