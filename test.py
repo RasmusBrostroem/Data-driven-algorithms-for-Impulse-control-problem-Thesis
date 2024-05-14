@@ -39,10 +39,15 @@ def time_function(func, args_list, repetitions=10):
 
 
 
+powers = [1, 5]
+zeroVals = [0.9]
+Cs = [0.5, 4]
+As = [0]
+exploration_percentages = [0, 0.1, 0.25, 0.50]
+argList = list(product(Cs, As, powers, zeroVals, exploration_percentages))[4:]
+print(argList)
 
 
-
-simulate_optimal_strategy(10, 0.01)
 
 
 # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
