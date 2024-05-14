@@ -584,10 +584,10 @@ if __name__ == "__main__":
     zeroVals = [0.9]
     Cs = [0.5, 4]
     As = [0]
-    exploration_percentages = [0, 0.1, 0.25, 0.50, 0.75, "all"]
-    argList = list(product(Cs, As, powers, zeroVals, exploration_percentages))
+    exploration_percentages = [0, 0.1, 0.25, 0.50]
+    argList = list(product(Cs, As, powers, zeroVals, exploration_percentages))[4:]
 
-    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal_using_exploitation_data)(Ts=Ts,
+    Parallel(n_jobs=8)(delayed(simulate_dataDriven_vs_optimal_using_exploitation_data)(Ts=Ts,
                                                                                        sims=sims,
                                                                                        C=C,
                                                                                        A=A,
