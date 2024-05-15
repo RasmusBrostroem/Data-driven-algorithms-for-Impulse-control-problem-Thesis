@@ -1,5 +1,5 @@
 from scipy.integrate import odeint, quad
-from diffusionProcess import drift, sigma, DiffusionProcess, generate_linear_drift
+from diffusionProcess import drift, sigma, DiffusionProcess, generate_linear_drift, sigma4, sigma7
 from strategies import DataDrivenImpulseControl, reward, get_y1_and_zeta, OptimalStrategy, generate_reward_func, get_bandwidth
 from simulations import simulate_optimal_strategy
 from time import time
@@ -37,102 +37,102 @@ def time_function(func, args_list, repetitions=10):
 
 # cumulativeReward, S_t, thresholds_and_Sts, nrDecisions = dataStrat.simulate(diffpros=diffPros, T=T, dt=0.01)
 
-def plot_data_driven_strategy(T=10, dt=0.01):
-    difPros = DiffusionProcess(drift, sigma)
-    dataStrat = DataDrivenImpulseControl(reward, sigma)
-    optStrat = OptimalStrategy(difPros, reward)
+# def plot_data_driven_strategy(T=10, dt=0.01):
+#     difPros = DiffusionProcess(drift, sigma)
+#     dataStrat = DataDrivenImpulseControl(reward, sigma)
+#     optStrat = OptimalStrategy(difPros, reward)
 
-    t = 0
-    X = 0
-    reachedZeta = False
-    exploring = True
-    threshold = None
-    Xperiod = [0]
-    tperiod = [0]
-    X_plot = []
-    t_plot = []
-    period_exploring = []
-    thresholds = []
-    thresholds_t = []
-    thresholds_plot = []
-    thresholds_t_plot = []
-    data = []
-    S_t = 0
-    i = 0
-    while t < T:
-        if not exploring:
-            thresholds.append(threshold)
-            thresholds_t.append(t)
+#     t = 0
+#     X = 0
+#     reachedZeta = False
+#     exploring = True
+#     threshold = None
+#     Xperiod = [0]
+#     tperiod = [0]
+#     X_plot = []
+#     t_plot = []
+#     period_exploring = []
+#     thresholds = []
+#     thresholds_t = []
+#     thresholds_plot = []
+#     thresholds_t_plot = []
+#     data = []
+#     S_t = 0
+#     i = 0
+#     while t < T:
+#         if not exploring:
+#             thresholds.append(threshold)
+#             thresholds_t.append(t)
 
-        if exploring:
-            data.append(X)
-            S_t += dt
-            if X >= dataStrat.zeta:
-                reachedZeta = True
+#         if exploring:
+#             data.append(X)
+#             S_t += dt
+#             if X >= dataStrat.zeta:
+#                 reachedZeta = True
             
-        if reachedZeta and X <= 0:
-            X_plot.append(Xperiod)
-            t_plot.append(tperiod)
-            period_exploring.append(exploring)
-            Xperiod = []
-            tperiod = []
-            dataStrat.bandwidth = 1/np.sqrt(S_t)
-            dataStrat.fit(data)
-            threshold = dataStrat.estimate_threshold()
-            print(threshold)
-            exploring = False
-            reachedZeta = False
+#         if reachedZeta and X <= 0:
+#             X_plot.append(Xperiod)
+#             t_plot.append(tperiod)
+#             period_exploring.append(exploring)
+#             Xperiod = []
+#             tperiod = []
+#             dataStrat.bandwidth = 1/np.sqrt(S_t)
+#             dataStrat.fit(data)
+#             threshold = dataStrat.estimate_threshold()
+#             print(threshold)
+#             exploring = False
+#             reachedZeta = False
 
-        if not exploring and X >= threshold:
-            X_plot.append(Xperiod)
-            t_plot.append(tperiod)
-            period_exploring.append(exploring)
-            X = 0
-            Xperiod = [X]
-            tperiod = [t]
-            if S_t < t**(2/3):
-                exploring = True
-                thresholds_plot.append(thresholds)
-                thresholds_t_plot.append(thresholds_t)
-                thresholds = []
-                thresholds_t = []
+#         if not exploring and X >= threshold:
+#             X_plot.append(Xperiod)
+#             t_plot.append(tperiod)
+#             period_exploring.append(exploring)
+#             X = 0
+#             Xperiod = [X]
+#             tperiod = [t]
+#             if S_t < t**(2/3):
+#                 exploring = True
+#                 thresholds_plot.append(thresholds)
+#                 thresholds_t_plot.append(thresholds_t)
+#                 thresholds = []
+#                 thresholds_t = []
 
-        X = difPros.step(X, t, dt)
-        t += dt
+#         X = difPros.step(X, t, dt)
+#         t += dt
 
-        Xperiod.append(X)
-        tperiod.append(t)
+#         Xperiod.append(X)
+#         tperiod.append(t)
     
-    X_plot.append(Xperiod)
-    t_plot.append(tperiod)
-    period_exploring.append(exploring)
-    thresholds_plot.append(thresholds)
-    thresholds_t_plot.append(thresholds_t)
+#     X_plot.append(Xperiod)
+#     t_plot.append(tperiod)
+#     period_exploring.append(exploring)
+#     thresholds_plot.append(thresholds)
+#     thresholds_t_plot.append(thresholds_t)
 
-    plt.rcParams["figure.figsize"] = [12,6]
-    for i, (t, x) in enumerate(zip(t_plot, X_plot)):
-        if period_exploring[i]:
-            plt.plot(t,x, color="#1b9e77", linewidth=1.0)
-        else:
-            plt.plot(t, x, color="#7570b3", linewidth=1.0)
+#     plt.rcParams["figure.figsize"] = [12,6]
+#     for i, (t, x) in enumerate(zip(t_plot, X_plot)):
+#         if period_exploring[i]:
+#             plt.plot(t,x, color="#1b9e77", linewidth=1.0)
+#         else:
+#             plt.plot(t, x, color="#7570b3", linewidth=1.0)
     
-    ts = np.linspace(0, T, int(T/dt))
-    plt.plot(ts, [optStrat.y_star for i in range(len(ts))], "k--", linewidth=1.0)
+#     ts = np.linspace(0, T, int(T/dt))
+#     plt.plot(ts, [optStrat.y_star for i in range(len(ts))], "k--", linewidth=1.0)
 
-    for t,threshold_val in zip(thresholds_t_plot, thresholds_plot):
-        plt.plot(t, threshold_val, "--", color="#d95f02", linewidth=1.5)
+#     for t,threshold_val in zip(thresholds_t_plot, thresholds_plot):
+#         plt.plot(t, threshold_val, "--", color="#d95f02", linewidth=1.5)
         
     
-    plt.xlabel("time (t)")
-    plt.ylabel("X")
-    plt.xticks([]) 
-    plt.yticks(np.arange(round(min(map(min, X_plot))*2)/2, round(max(map(max, X_plot))*2)/2+0.5, 0.5))
+#     plt.xlabel("time (t)")
+#     plt.ylabel("X")
+#     plt.xticks([]) 
+#     plt.yticks(np.arange(round(min(map(min, X_plot))*2)/2, round(max(map(max, X_plot))*2)/2+0.5, 0.5))
     
-    #plt.savefig("test.png",bbox_inches='tight')
-    plt.show()
-    return
+#     #plt.savefig("test.png",bbox_inches='tight')
+#     plt.show()
+#     return
 
-plot_data_driven_strategy(30, 0.01)
+# plot_data_driven_strategy(30, 0.01)
 # bandwidths = [[1, -1/2], [5, -1/2], [10, -1/2], [1, -1/4], [1, -1/8], ["scott", -1/2], ["silverman", -1/2]]
 
 # ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
