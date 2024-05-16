@@ -9,7 +9,7 @@ from mpmath import hyp2f2
 # Define the drift function and diffusion coefficient
 def drift(x: float) -> float:
     # return the drift function evaluated at x and t
-    return -x/2
+    return -2*x
 
 def generate_linear_drift(C: float, A: float = 0):
     return lambda x: -C*x

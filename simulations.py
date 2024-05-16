@@ -62,6 +62,8 @@ def simulate_optimal_strategy(T=10, dt=0.01):
     plt.show()
     return
 
+
+
 def plot_uncontrolled_diffusion(T=100, dt=0.01, x0=0):
     difPros = DiffusionProcess(drift, sigma)
     x, t = difPros.EulerMaruymaMethod(T, dt, x0)

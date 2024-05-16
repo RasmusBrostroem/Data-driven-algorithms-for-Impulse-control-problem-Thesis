@@ -25,7 +25,7 @@ def get_bandwidth(ST, a=1, p=-1/2, log=False):
     return a*ST**p
 
 def reward(x):
-    return 9/10 - np.abs(1-x)**(1)
+    return 7/10 - np.abs(1-x)**(1)
     # return 10 - np.abs(4-3*x)**2
 
 def generate_reward_func(power: float, zeroVal: float):
