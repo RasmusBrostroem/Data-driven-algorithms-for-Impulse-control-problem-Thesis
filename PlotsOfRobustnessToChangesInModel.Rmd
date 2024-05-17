@@ -21,7 +21,7 @@ library(nlstools)
 library(kableExtra)
 ```
 
-```{r}
+```{r, include=FALSE}
 #setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 data <- read.csv("./SimulationData/DriftAndRewardData/DriftsAndRewards.csv")
