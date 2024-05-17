@@ -101,13 +101,13 @@ if __name__ == "__main__":
     # download_neptune_data(ids=id_list, file_name="ExplorationFormsStrategiesData")
 
     ### Download Diffusion coefficient data
-    id_list = [f"DIF-{i}" for i in range(509, 520)]
-    download_neptune_data(ids=id_list, file_name="DiffusionCoefficientData")
-    download_threshold_data(id_list, "DiffusionCoefficientThresholdData")
+    #id_list = [f"DIF-{i}" for i in range(509, 520)]
+    #download_neptune_data(ids=id_list, file_name="DiffusionCoefficientData")
+    #download_threshold_data(id_list, "DiffusionCoefficientThresholdData")
 
     ### Download Misspecification data
     id_list = [f"DIF-{i}" for i in range(545, 557)]
-    download_neptune_data(ids=id_list, file_name="MisspecificationData")
+    #download_neptune_data(ids=id_list, file_name="MisspecificationData")
     download_threshold_data(id_list, "MisspecificationThresholdData")
 
 
