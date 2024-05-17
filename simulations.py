@@ -18,7 +18,7 @@ from itertools import product
 
 import inspect
 
-from diffusionProcess import DiffusionProcess, drift, sigma, generate_linear_drift
+from diffusionProcess import DiffusionProcess, drift, sigma, generate_linear_drift, sigma4, sigma7
 from strategies import OptimalStrategy, reward, get_y1_and_zeta, DataDrivenImpulseControl, generate_reward_func, get_bandwidth
 
 
@@ -300,11 +300,20 @@ def simulate_dataDriven_vs_optimal(Ts,
                                    ST_form_and_text=(lambda t: t**(2/3), "T^(2/3)"),
                                    kernel_method="gaussian",
                                    bandwidth_func = lambda t: 1/np.sqrt(t),
+                                   sigma_func = sigma,
+                                   sigma_func_A = None,
+                                   driftFuncAndPower=None,
                                    neptune_tags=["StrategyVsOptimal"]):
     
-    driftFunc = generate_linear_drift(C, A)
+    if driftFuncAndPower:
+        driftFunc = driftFuncAndPower[0]
+    else:
+        driftFunc = generate_linear_drift(C, A)
     rewardFunc = generate_reward_func(power, zeroVal)
-    sigmaFunc = sigma
+    if sigma_func_A:
+        sigmaFunc = sigma_func(sigma_func_A)
+    else:
+        sigmaFunc = sigma_func
     run = neptune.init_run(project='rasmusbrostroem/DiffusionControl', tags=neptune_tags)
     runId = run["sys/id"].fetch()
     diffusionProcess = DiffusionProcess(b=driftFunc, sigma=sigmaFunc)
@@ -326,6 +335,8 @@ def simulate_dataDriven_vs_optimal(Ts,
 
     run["ModelParams"] = {
         "driftFunc": inspect.getsource(diffusionProcess.b),
+        "driftFuncPower": driftFuncAndPower[1] if driftFuncAndPower else "",
+        "driftFuncName": driftFuncAndPower[2] if driftFuncAndPower else "",
         "C": C,
         "A": A,
         "diffusionCoef": inspect.getsource(diffusionProcess.sigma),
@@ -334,7 +345,8 @@ def simulate_dataDriven_vs_optimal(Ts,
         "zeroVal": zeroVal,
         "y_star": OptimalStrat.y_star,
         "y1": DataStrat.y1,
-        "zeta": DataStrat.zeta
+        "zeta": DataStrat.zeta,
+        "sigma_func_A": sigma_func_A if sigma_func_A else "None"
     }
 
     for s in range(sims):
@@ -459,24 +471,68 @@ if __name__ == "__main__":
     #                                           neptune_tags=["Fixed MISE", "Kernel Bandwidths"]) for C, bandwidth_a_p_log in argList)
     
     ### Simulating different exploration times
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # Cs = [1/2, 4]
+    # powers = [1, 5]
+    # ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
+    #             (lambda t: t**(1/3), "T^(1/3)"),
+    #             (lambda t: t**(1/2), "T^(1/2)"),
+    #             (lambda t: t**(2/3), "T^(2/3)"),
+    #             (lambda t: t**(3/4), "T^(3/4)"),
+    #             (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
+
+    # argList = list(product(Cs, powers, ST_forms))
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=C,
+    #                                                            A=0,
+    #                                                            power=p,
+    #                                                            zeroVal=0.9,
+    #                                                            ST_form_and_text=st_form,
+    #                                                            neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
+
+    ### Simulating different diffusion coefficients
     Ts = [100*i for i in range(1,51)]
     sims = 100
-    Cs = [1/2, 4]
+    Cs = [1/2]
     powers = [1, 5]
-    ST_forms = [(lambda t: t**(1/4), "T^(1/4)"),
-                (lambda t: t**(1/3), "T^(1/3)"),
-                (lambda t: t**(1/2), "T^(1/2)"),
-                (lambda t: t**(2/3), "T^(2/3)"),
-                (lambda t: t**(3/4), "T^(3/4)"),
-                (lambda t: 2*(np.sqrt(2*np.sqrt(t)+1) + np.sqrt(t) + 1), "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")]
+    As = [0.2, 0.4, 0.6]
+    sigma_funcs = [sigma4, sigma7]
 
-    argList = list(product(Cs, powers, ST_forms))
+    argList = list(product(Cs, powers, As, sigma_funcs))
+
     Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
                                                                sims=sims,
-                                                               C=C,
+                                                               C=0,
                                                                A=0,
                                                                power=p,
                                                                zeroVal=0.9,
-                                                               ST_form_and_text=st_form,
-                                                               neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
+                                                               sigma_func=sigmafunc,
+                                                               sigma_func_A=sigmaA,
+                                                               neptune_tags=["Diffucions Coeffient"]) for C, p, sigmaA, sigmafunc in argList)
+
+    ### Simulating misspecification
+    Ts = [100*i for i in range(1,51)]
+    sims = 100
+    powers = [2, 5]
+    def b1(power: float):
+        return lambda x: -x**power
+    def b2(power: float):
+        return lambda x: -x**power + x**2+x
+    def b3(power: float):
+        return lambda x: -x**power + x
+    
+    driftPowers = [3, 13]
+    driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
+    
+    argList = list(product(powers, driftsAndPowers))
+    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+                                                               sims=sims,
+                                                               C=0,
+                                                               A=0,
+                                                               power=p,
+                                                               zeroVal=0.7,
+                                                               driftFuncAndPower=driftAndPower,
+                                                               neptune_tags=["Misspecification"]) for p, driftAndPower in argList)
     
