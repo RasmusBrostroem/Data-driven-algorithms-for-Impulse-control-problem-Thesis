@@ -21,7 +21,7 @@ library(nlstools)
 library(kableExtra)
 ```
 
-```{r}
+```{r, include=FALSE}
 #setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 data <- read.csv("./SimulationData/DriftAndRewardData/DriftsAndRewards.csv")
@@ -40,6 +40,7 @@ Each combination of drift function and reward function is simulated 100 times.
 
 # Different linear drift coefficients
 First, lets see how the different drift slope coefficients impacted the optimal threshold on average over all reward functions.
+
 ```{r}
 avgYStartCs <- data %>% group_by(C) %>% summarise(avgOptThreshold = mean(y_star),
                                                   .groups = "drop")
@@ -47,7 +48,7 @@ avgYStartCs <- data %>% group_by(C) %>% summarise(avgOptThreshold = mean(y_star)
 avgYStartCs
 ```
 
-Here we see that on average the higher the linear coefficient is for the drift the lower the the optimal threshold is, which corresponds with how it affects the expected hitting times. As the linear coefficient increases, the expected hitting times goes from having linear growth to an exponential growth in the interval $[0, \zeta]$, meaning that on average it takes way too long for the process to get to certain values, and though the maximum payoff might be achieved by stopping the process at a higher value it isn't beneficial, since the agent is able to stop the process several times and get the same cumulative reward with a lower threshold.
+Here we see that on average the higher the linear coefficient is for the drift the lower the the optimal threshold is, which corresponds with how it affects the expected hitting times. As the linear coefficient increases, the expected hitting times goes from a linear growth to an exponential drift, meaning that on average it takes way too long for the process to get to certain values, and though the maximum reward might be achieved by stopping the process at higher values it isn't beneficial, since the agent is able to stop the process several times and get the same cumulative reward with a lower threshold.
 
 To see the general impact of the drift function on the data-driven algorithm I will look at the impact of the different drift coefficients over all of the reward functions first. Therefore, I group over all the different time horizons and the different coefficients for C.
 
