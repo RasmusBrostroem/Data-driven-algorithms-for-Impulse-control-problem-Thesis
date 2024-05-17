@@ -24,8 +24,8 @@ library(kableExtra)
 ```{r}
 #setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
-Misedata <- read.csv("./SimulationData/Kernels/KernelFunctions.csv")
-data <- read.csv("./SimulationData/Kernels/KernelStratiesData.csv")
+Misedata <- read.csv("./SimulationData/Kernels/MiseKernelFunctions.csv")
+data <- read.csv("./SimulationData/Kernels/KernelStrategiesData.csv")
 MiseBandwidth <- read.csv("./SimulationData/Kernels/MiseKernelBandwidth.csv")
 ```
 
@@ -48,12 +48,13 @@ AvgData <- Misedata %>% group_by(ST, C, kernelMethod) %>%
 
 AvgData$C = as.factor(AvgData$C)
 AvgData$kernelMethod = as.factor(AvgData$kernelMethod)
+AvgData$CText = paste0("Drift slope = ", AvgData$C)
 ```
 
 ```{r}
 ggplot(AvgData, aes(x=ST, group=kernelMethod))+
   geom_line(aes(y=avgMisePdf, color=kernelMethod))+
-  facet_wrap(~C, nrow = 2, scales = "free")+
+  facet_wrap(~CText, nrow = 2, scales = "free")+
   ylab("Mean Integrated Squared Error (MISE)")+
   xlab("Exploration time")+
   ggtitle("MISE for the invariant density")+
@@ -67,7 +68,7 @@ Lets also see how the standard deviation of the integrated squared error changes
 ```{r}
 ggplot(AvgData, aes(x=ST, group=kernelMethod))+
   geom_line(aes(y=sdMisePdf, color=kernelMethod))+
-  facet_wrap(~C, nrow = 2, scales = "free")+
+  facet_wrap(~CText, nrow = 2, scales = "free")+
   ylab("Standard deviation of the Integrated Squared Error")+
   xlab("Exploration time")+
   ggtitle("SD of integrated squared error for the invariant density")+
@@ -90,12 +91,13 @@ AvgDataCdf <- Misedata %>% group_by(ST, C) %>%
                                     .groups = "drop")
 
 AvgDataCdf$C = as.factor(AvgDataCdf$C)
+AvgDataCdf$CText = paste0("Drift slope = ", AvgDataCdf$C)
 ```
 
 
 ```{r}
-ggplot(AvgDataCdf, aes(x=ST, group=C))+
-  geom_line(aes(y=avgMiseCdf, color=C))+
+ggplot(AvgDataCdf, aes(x=ST, group=CText))+
+  geom_line(aes(y=avgMiseCdf, color=CText))+
   ylab("Mean Integrated Squared Error (MISE)")+
   xlab("Exploration time")+
   ggtitle("MISE for the invariant distribution function")+
@@ -107,8 +109,8 @@ As expected we see that the empirical distribution function gets closer to the t
 Lets see how stable the empirical distribution function is for the different drift slopes.
 
 ```{r}
-ggplot(AvgDataCdf, aes(x=ST, group=C))+
-  geom_line(aes(y=sdMiseCdf, color=C))+
+ggplot(AvgDataCdf, aes(x=ST, group=CText))+
+  geom_line(aes(y=sdMiseCdf, color=CText))+
   ylab("Standard deviation of Integrated Squared Error")+
   xlab("Exploration time")+
   ggtitle("SD for the integrated squared error for the invariant distribution function")+
@@ -152,16 +154,18 @@ avgDataStrat <- data %>% group_by(T, C, power, kernelMethod) %>%
 avgDataStrat$C = as.factor(avgDataStrat$C)
 avgDataStrat$power = as.factor(avgDataStrat$power)
 avgDataStrat$kernelMethod = as.factor(avgDataStrat$kernelMethod)
+avgDataStrat$CText = paste0("Drift slope = ", avgDataStrat$C)
+avgDataStrat$pText = paste0("Payoff power = ", avgDataStrat$power)
 ```
 
 ```{r}
 ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
-  geom_line(aes(y=avgRegret, color=kernelMethod))+
-  labs(title = "Average regret for kernel methods",
-       y = "Average regret",
+  geom_line(aes(y=avgRegret/T, color=kernelMethod))+
+  labs(title = "Average CR per time unit for kernel methods",
+       y = "Average cumulative regret per time unit",
        x = "Time horizon (T)",
        color = "Kernel Method")+
-  facet_grid(power ~ C, scales = "free")
+  facet_grid(pText ~ CText, scales = "free")
 ```
 
 We can clearly see that the only effect on the average regret comes from the change in drift and reward function, but that all kernel methods has the same average regret for each combination of reward and drift function. Lets also fit the average regret and see if the constants are the same. Here we also fit the regret to the form:
@@ -229,12 +233,12 @@ Lets see if all kernel methods are just as stable:
 
 ```{r}
 ggplot(avgDataStrat, aes(x=T, group=kernelMethod))+
-  geom_line(aes(y=sdRegret, color=kernelMethod))+
-  labs(title = "Standard deviation of regret for kernel methods",
-       y = "Standard deviation of regret",
+  geom_line(aes(y=sdRegret/T, color=kernelMethod))+
+  labs(title = "Standard deviation of CR per time unit for kernel methods",
+       y = "Standard deviation of cumulative regret per time unit",
        x = "Time horizon (T)",
        color = "Kernel Method")+
-  facet_grid(power ~ C, scales = "free")
+  facet_grid(pText ~ CText, scales = "free")
 ```
 
 Here we also see that the standard deviation of the regret is almost the same for each of the kernel methods for the four combinations of the reward and drift functions, with the Gaussian kernel having a slightly lower standard deviation for most of the time horizons when the power is high for the reward function. However, this is such a small difference and it is not consistent for all time horizons, thus making it irrelevant which kernel method is chosen.
@@ -262,6 +266,7 @@ To do so we will try different constants for the bandwidth of the form:
 $$
 bw = \frac{a}{\sqrt{T}}, \quad a \in \{1, 5, 10\}
 $$
+
 ```{r}
 avgBandwidthData <- MiseBandwidth %>% group_by(ST, C, bandwidth_a, bandwidth_p) %>% 
   summarise(avgMisePdf = mean(MISEPdf),
@@ -270,6 +275,7 @@ avgBandwidthData <- MiseBandwidth %>% group_by(ST, C, bandwidth_a, bandwidth_p) 
             .groups = "drop")
 
 avgBandwidthData$C = as.factor(avgBandwidthData$C)
+avgBandwidthData$CText = paste0("Drift slope = ", avgBandwidthData$C)
 avgBandwidthData$bandwidth_a = as.factor(avgBandwidthData$bandwidth_a)
 avgBandwidthData$bandwidth_p = as.factor(avgBandwidthData$bandwidth_p)
 ```
@@ -279,11 +285,11 @@ avgData_a = avgBandwidthData %>% filter(bandwidth_a %in% c(1, 5, 10) & bandwidth
 
 ggplot(avgData_a, aes(x=ST, group=bandwidth_a))+
   geom_line(aes(y=avgMisePdf, color=bandwidth_a))+
-  facet_wrap(~C, nrow = 2, scales = "free")+
+  facet_wrap(~CText, nrow = 2, scales = "free")+
   ylab("Mean Integrated Squared Error (MISE)")+
   xlab("Exploration time")+
   ggtitle("MISE for the invariant density")+
-  labs(color = "a")
+  labs(color = "bw constant")
 ```
 
 We can see that for low values of the drift slope coefficient, then the higher constant in the bandwidth makes the fit better for shorter exploration times on average. However, as the exploration time increases to about 100 time units, then there isn't really any difference in the fit for the different bandwidths. The increase in the constant of the bandwidth does however have a significant downside when the drift slope coefficient gets higher. Here we see that the increase in the constant of the bandwidth makes the fit worse for shorter exploration times and as the drift slope increases it takes longer time for a higher bandwidth constant to be able to have the same fit. 
@@ -293,11 +299,11 @@ Lets see how stable the fit is for the different constants.
 ```{r}
 ggplot(avgData_a, aes(x=ST, group=bandwidth_a))+
   geom_line(aes(y=sdMisePdf, color=bandwidth_a))+
-  facet_wrap(~C, nrow = 2, scales = "fixed")+
+  facet_wrap(~CText, nrow = 2, scales = "free")+
   ylab("Sd of Integrated Squared Error")+
   xlab("Exploration time")+
   ggtitle("SD of Integrated Squared Error for the invariant density")+
-  labs(color = "a")
+  labs(color = "bw constant")
 ```
 
 Here we can see that for all drift slope coefficients the higher bandwidth constant makes the integrated squared error and therefore the fit more stable when the exploration time is low, but also that an exploration time of about 50 time units, then all of the bandwidths have the same stability of the integrated squared error and therefore the same stability of their fits to the true invariant density.
@@ -315,11 +321,11 @@ avgData_p = avgBandwidthData %>% filter(bandwidth_p %in% c(-1/2, -1/4, -1/8) & b
 
 ggplot(avgData_p, aes(x=ST, group=bandwidth_p))+
   geom_line(aes(y=avgMisePdf, color=bandwidth_p))+
-  facet_wrap(~C, nrow = 2, scales = "free")+
+  facet_wrap(~CText, nrow = 2, scales = "free")+
   ylab("Mean Integrated Squared Error (MISE)")+
   xlab("Exploration time")+
   ggtitle("MISE for the invariant density for different powers of bandwidth")+
-  labs(color = "p")
+  labs(color = "bw power")
 ```
 
 Here we see again see that for low drift slope coefficients, the higher powers of the bandwidth are slightly better, but that the difference is so small that it wouldn't make much difference. However, when the drift slope coefficient increases, then the higher power of the bandwidth makes the fit worse to the point where within the 300 time units of exploring, the power of -0.125 never achieves a fit as good as the power of -0.5 with only 10 time units of exploring for a drift slope coefficient of 4.
@@ -333,7 +339,7 @@ ggplot(avgData_p, aes(x=ST, group=bandwidth_p))+
   ylab("Sd of Integrated Squared Error")+
   xlab("Exploration time")+
   ggtitle("Standard deviation of Integrated Squared Error for the invariant density")+
-  labs(color = "p")
+  labs(color = "bw power")
 ```
 
 We can see that the higher bandwidth powers have a slight advantage in making the estimations more robust in terms of the standard deviation of the integrated squared error for short exploration times for all drift slope coefficients. However, it does not take much exploration before all powers have the same stability for all the different drift slopes. Also, we see that the estimations become more stable when the drift slope coefficient increases.
@@ -347,7 +353,7 @@ avgData_methods = avgBandwidthData %>% filter(bandwidth_a %in% c(1, "scott", "si
 
 ggplot(avgData_methods, aes(x=ST, group=bandwidth_a))+
   geom_line(aes(y=avgMisePdf, color=bandwidth_a))+
-  facet_wrap(~C, nrow = 2, scales = "free")+
+  facet_wrap(~CText, nrow = 2, scales = "free")+
   ylab("Mean Integrated Squared Error (MISE)")+
   xlab("Exploration time")+
   ggtitle("MISE for the invariant density")+
@@ -365,7 +371,7 @@ ggplot(avgData_methods, aes(x=ST, group=bandwidth_a))+
   ylab("Sd of Integrated Squared Error")+
   xlab("Exploration time")+
   ggtitle("Standard deviation of Integrated Squared Error for the invariant density")+
-  labs(color = "a")
+  labs(color = "Method")
 ```
 
 Again we see that using the "scott" or "silverman" method does not improve the stability of the kernel density estimation and that all three bandwidth methods improve their stability, when the drift slope coefficient increases.
