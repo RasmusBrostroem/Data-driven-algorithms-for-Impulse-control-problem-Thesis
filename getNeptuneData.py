@@ -104,6 +104,11 @@ if __name__ == "__main__":
     id_list = [f"DIF-{i}" for i in range(509, 520)]
     download_neptune_data(ids=id_list, file_name="DiffusionCoefficientData")
 
+    ### Download Misspecification data
+    id_list = [f"DIF-{i}" for i in range(545, 557)]
+    download_neptune_data(ids=id_list, file_name="MisspecificationData")
+
+
 
 
 

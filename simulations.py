@@ -302,9 +302,13 @@ def simulate_dataDriven_vs_optimal(Ts,
                                    bandwidth_func = lambda t: 1/np.sqrt(t),
                                    sigma_func = sigma,
                                    sigma_func_A = None,
+                                   driftFuncAndPower=None,
                                    neptune_tags=["StrategyVsOptimal"]):
     
-    driftFunc = generate_linear_drift(C, A)
+    if driftFuncAndPower:
+        driftFunc = driftFuncAndPower[0]
+    else:
+        driftFunc = generate_linear_drift(C, A)
     rewardFunc = generate_reward_func(power, zeroVal)
     if sigma_func_A:
         sigmaFunc = sigma_func(sigma_func_A)
@@ -331,6 +335,8 @@ def simulate_dataDriven_vs_optimal(Ts,
 
     run["ModelParams"] = {
         "driftFunc": inspect.getsource(diffusionProcess.b),
+        "driftFuncPower": driftFuncAndPower[1] if driftFuncAndPower else "",
+        "driftFuncName": driftFuncAndPower[2] if driftFuncAndPower else "",
         "C": C,
         "A": A,
         "diffusionCoef": inspect.getsource(diffusionProcess.sigma),
@@ -495,13 +501,38 @@ if __name__ == "__main__":
     sigma_funcs = [sigma4, sigma7]
 
     argList = list(product(Cs, powers, As, sigma_funcs))
+
     Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
                                                                sims=sims,
-                                                               C=C,
+                                                               C=0,
                                                                A=0,
                                                                power=p,
                                                                zeroVal=0.9,
                                                                sigma_func=sigmafunc,
                                                                sigma_func_A=sigmaA,
                                                                neptune_tags=["Diffucions Coeffient"]) for C, p, sigmaA, sigmafunc in argList)
+
+    ### Simulating misspecification
+    Ts = [100*i for i in range(1,51)]
+    sims = 100
+    powers = [2, 5]
+    def b1(power: float):
+        return lambda x: -x**power
+    def b2(power: float):
+        return lambda x: -x**power + x**2+x
+    def b3(power: float):
+        return lambda x: -x**power + x
+    
+    driftPowers = [3, 13]
+    driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
+    
+    argList = list(product(powers, driftsAndPowers))
+    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+                                                               sims=sims,
+                                                               C=0,
+                                                               A=0,
+                                                               power=p,
+                                                               zeroVal=0.7,
+                                                               driftFuncAndPower=driftAndPower,
+                                                               neptune_tags=["Misspecification"]) for p, driftAndPower in argList)
     
