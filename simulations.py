@@ -493,24 +493,24 @@ if __name__ == "__main__":
     #                                                            neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
 
     ### Simulating different diffusion coefficients
-    Ts = [100*i for i in range(1,51)]
-    sims = 100
-    Cs = [1/2]
-    powers = [1, 5]
-    As = [0.2, 0.4, 0.6]
-    sigma_funcs = [sigma4, sigma7]
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # Cs = [1/2]
+    # powers = [1, 5]
+    # As = [0.2, 0.4, 0.6]
+    # sigma_funcs = [sigma4, sigma7]
 
-    argList = list(product(Cs, powers, As, sigma_funcs))
+    # argList = list(product(Cs, powers, As, sigma_funcs))
 
-    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
-                                                               sims=sims,
-                                                               C=0,
-                                                               A=0,
-                                                               power=p,
-                                                               zeroVal=0.9,
-                                                               sigma_func=sigmafunc,
-                                                               sigma_func_A=sigmaA,
-                                                               neptune_tags=["Diffucions Coeffient"]) for C, p, sigmaA, sigmafunc in argList)
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=0,
+    #                                                            A=0,
+    #                                                            power=p,
+    #                                                            zeroVal=0.9,
+    #                                                            sigma_func=sigmafunc,
+    #                                                            sigma_func_A=sigmaA,
+    #                                                            neptune_tags=["Diffucions Coeffient"]) for C, p, sigmaA, sigmafunc in argList)
 
     ### Simulating misspecification
     Ts = [100*i for i in range(1,51)]
@@ -518,21 +518,23 @@ if __name__ == "__main__":
     powers = [2, 5]
     def b1(power: float):
         return lambda x: -x**power
-    def b2(power: float):
-        return lambda x: -x**power + x**2+x
-    def b3(power: float):
-        return lambda x: -x**power + x
+    # def b2(power: float):
+    #     return lambda x: -x**power + x**2+x
+    # def b3(power: float):
+    #     return lambda x: -x**power + x
     
-    driftPowers = [3, 13]
-    driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
-    
+    #driftPowers = [3, 13]
+    #driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
+    driftPowers = [3, 5, 7, 9, 11]
+    driftsAndPowers = [(b1(p), p, "b4") for p in driftPowers]
+
     argList = list(product(powers, driftsAndPowers))
-    Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    Parallel(n_jobs=5)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
                                                                sims=sims,
                                                                C=0,
                                                                A=0,
                                                                power=p,
                                                                zeroVal=0.7,
                                                                driftFuncAndPower=driftAndPower,
-                                                               neptune_tags=["Misspecification"]) for p, driftAndPower in argList)
+                                                               neptune_tags=["Misspecification", "IncreasingPower"]) for p, driftAndPower in argList)
     
