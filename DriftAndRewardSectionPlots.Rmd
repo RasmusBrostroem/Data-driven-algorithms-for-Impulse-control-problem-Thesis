@@ -51,7 +51,7 @@ avgData <- data %>%
 avgData$C = as.factor(avgData$C)
 avgData$power = as.factor(avgData$power)
 avgData$zeroVal = as.factor(avgData$zeroVal)
-avgData$CText = paste0("Drift slope = ", avgData$C)
+avgData$CText = paste0("C = ", avgData$C)
 avgData$zeroValText = paste0("Payoff a-value = ", avgData$zeroVal)
 avgData$pText = paste0("Payoff power = ", avgData$power)
 ```
@@ -61,14 +61,15 @@ Average cumulative regret plot
 ```{r}
 ggplot(avgData, aes(x=T, group=CText))+
   geom_line(aes(y=avgRegret, color=CText), size=1.2)+
+  #geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Average cumulative regret")+
   xlab("Time horizon (T)")+
   ggtitle("Average cumulative regret for drift and payoff functions")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#66c2a5",
-                                "Drift slope = 0.5" = "#fc8d62",
-                                "Drift slope = 4" = "#8da0cb"))+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ zeroValText, scales="free")+
+  facet_grid(pText ~ zeroValText, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -97,9 +98,9 @@ ggplot(avgData, aes(x=T, group=CText))+
   ylab("Standard deviation of cumulative regret")+
   xlab("Time horizon (T)")+
   ggtitle("Standard deviation of cumulative regret for drift and payoff functions")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#66c2a5",
-                                "Drift slope = 0.5" = "#fc8d62",
-                                "Drift slope = 4" = "#8da0cb"))+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
   facet_grid(pText ~ zeroValText, scales="fixed")+
   theme_bw()+
@@ -140,7 +141,7 @@ avgDataPerTime <- data %>%
 avgDataPerTime$C = as.factor(avgDataPerTime$C)
 avgDataPerTime$power = as.factor(avgDataPerTime$power)
 avgDataPerTime$zeroVal = as.factor(avgDataPerTime$zeroVal)
-avgDataPerTime$CText = paste0("Drift slope = ", avgDataPerTime$C)
+avgDataPerTime$CText = paste0("C = ", avgDataPerTime$C)
 avgDataPerTime$zeroValText = paste0("Payoff a-value = ", avgDataPerTime$zeroVal)
 avgDataPerTime$pText = paste0("Payoff power = ", avgDataPerTime$power)
 ```
@@ -153,9 +154,9 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
   ylab("Average cumulative regret per time unit")+
   xlab("Time horizon (T)")+
   ggtitle("Average cumulative regret per time unit for drift and payoff functions")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#66c2a5",
-                                "Drift slope = 0.5" = "#fc8d62",
-                                "Drift slope = 4" = "#8da0cb"))+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
   facet_grid(pText ~ zeroValText, scales="free")+
   theme_bw()+
@@ -185,9 +186,9 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
   ylab("Standard deviation of cumulative regret per time unit")+
   xlab("Time horizon (T)")+
   ggtitle("Standard deviation of cumulative regret per time unit for drift and payoff functions")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#66c2a5",
-                                "Drift slope = 0.5" = "#fc8d62",
-                                "Drift slope = 4" = "#8da0cb"))+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
   facet_grid(pText ~ zeroValText, scales="free")+
   theme_bw()+
@@ -316,7 +317,7 @@ ggplot(fittedValuesDF, aes(x=T, group=CText))+
 ```
 
 ```{r}
-tmpData <- fittedValuesDF %>% filter(zeroVal == 0.7)
+tmpData <- fittedValuesDF %>% filter(zeroVal == 0.99)
 
 ggplot(tmpData, aes(x=T))+
   geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
@@ -325,7 +326,7 @@ ggplot(tmpData, aes(x=T))+
                                 "Fitted value"="#fc8d62"))+
   ylab("Average cumulate regret")+
   xlab("Time horizon (T)")+
-  ggtitle("Fitted average cumulative regret for drift and payoff functions with a=0.7")+
+  ggtitle("Fitted average cumulative regret for drift and payoff functions with a=0.99")+
   facet_grid(pText ~ CText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -376,7 +377,7 @@ ggplot(avgData, aes(x=T, group=CText))+
 Individual plots
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.7)
+tmpData <- avgData %>% filter(zeroVal == 0.99)
 
 ggplot(tmpData, aes(x=T))+
   geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
@@ -385,7 +386,7 @@ ggplot(tmpData, aes(x=T))+
                                 "Target ST"="#fc8d62"))+
   ylab("Average exploration time (ST)")+
   xlab("Time horizon (T)")+
-  ggtitle("Average exploration time for drift and payoff functions with a=0.7")+
+  ggtitle("Average exploration time for drift and payoff functions with a=0.99")+
   facet_grid(pText ~ CText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -409,17 +410,18 @@ ggplot(tmpData, aes(x=T))+
 # Number of decisions
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.9)
+tmpData <- avgData %>% filter(zeroVal == 0.7)
 
 
 ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=CText), size=1.2)+
+  geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Difference in number of decisions")+
   xlab("Time horizon (T)")+
-  ggtitle("Difference in number of decisions made by optimal and data-driven strategy (a=0.9)")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#66c2a5",
-                                "Drift slope = 0.5" = "#fc8d62",
-                                "Drift slope = 4" = "#8da0cb"))+
+  ggtitle("Difference in number of decisions made by optimal and data-driven strategy (a=0.7)")+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
   facet_wrap(~pText, nrow=2, scales="fixed")+
   theme_bw()+
@@ -429,7 +431,7 @@ ggplot(tmpData, aes(x=T, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.2, 0.87),
+        legend.position = c(0.13, 0.86),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -447,7 +449,7 @@ ggplot(tmpData, aes(x=T, group=CText))+
 
 ```{r}
 thresholds$pText <- paste0("Payoff power = ", thresholds$power)
-thresholds$CText <- paste0("Drift slope = ", thresholds$C)
+thresholds$CText <- paste0("C = ", thresholds$C)
 thresholds$zeroValText <- paste0("Payoff a = ", thresholds$zeroVal)
 ```
 
@@ -530,9 +532,9 @@ ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
   ggtitle("Difference between estimated and optimal threshold for exploration intervals (a=0.99)")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#66c2a5",
-                                "Drift slope = 0.5" = "#fc8d62",
-                                "Drift slope = 4" = "#8da0cb"))+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
   facet_wrap(~pText, nrow=2, scales="free_y")+
   theme_bw()+
@@ -542,7 +544,7 @@ ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.99, 0.31),
+        legend.position = c(0.99, 0.33),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -566,10 +568,10 @@ ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
   geom_hline(yintercept=0,linetype="dashed", alpha = 0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
-  ggtitle("Difference between estimated and optimal threshold for exploration intervals (a=0.7, Outliers)")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#66c2a5",
-                                "Drift slope = 0.5" = "#fc8d62",
-                                "Drift slope = 4" = "#8da0cb"))+
+  ggtitle("Difference between estimated and optimal threshold (a=0.99, Outliers)")+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
   facet_wrap(~pText, nrow=2, scales="free_y")+
   theme_bw()+
@@ -579,7 +581,7 @@ ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.99, 0.31),
+        legend.position = c(0.99, 0.33),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
