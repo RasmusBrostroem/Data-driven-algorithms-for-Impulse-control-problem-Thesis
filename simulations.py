@@ -346,6 +346,8 @@ def simulate_dataDriven_vs_optimal(Ts,
         "y_star": OptimalStrat.y_star,
         "y1": DataStrat.y1,
         "zeta": DataStrat.zeta,
+        "true_a": diffprocess.get_a_of_invariant_density(DataStrat.zeta),
+        "true_M1": diffprocess.get_M1_of_xi(DataStrat.y1, DataStrat.zeta),
         "sigma_func_A": sigma_func_A if sigma_func_A else "None"
     }
 
@@ -492,47 +494,96 @@ if __name__ == "__main__":
     #                                                            ST_form_and_text=st_form,
     #                                                            neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
 
-    ### Simulating different diffusion coefficients
+    # ### Simulating different diffusion coefficients
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # Cs = [1/2]
+    # powers = [1, 5]
+    # As = [0.2, 0.4, 0.6]
+    # sigma_funcs = [sigma4, sigma7]
+
+    # argList = list(product(Cs, powers, As, sigma_funcs))
+
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=0,
+    #                                                            A=0,
+    #                                                            power=p,
+    #                                                            zeroVal=0.9,
+    #                                                            sigma_func=sigmafunc,
+    #                                                            sigma_func_A=sigmaA,
+    #                                                            neptune_tags=["Diffucions Coeffient"]) for C, p, sigmaA, sigmafunc in argList)
+
+    # ### Simulating misspecification
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # powers = [2, 5]
+    # def b1(power: float):
+    #     return lambda x: -x**power
+    # def b2(power: float):
+    #     return lambda x: -x**power + x**2+x
+    # def b3(power: float):
+    #     return lambda x: -x**power + x
+    
+    # driftPowers = [3, 13]
+    # driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
+    
+    # argList = list(product(powers, driftsAndPowers))
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=0,
+    #                                                            A=0,
+    #                                                            power=p,
+    #                                                            zeroVal=0.7,
+    #                                                            driftFuncAndPower=driftAndPower,
+    #                                                            neptune_tags=["Misspecification"]) for p, driftAndPower in argList)
+
+    ### Simulating different values of a and M1
+    b = generate_linear_drift(1/2)
+    g = generate_reward_func(1, 0.9)
+    y1, zeta = get_y1_and_zeta(g)
+    diffprocess = DiffusionProcess(b, sigma)
+    true_a = diffprocess.get_a_of_invariant_density(zeta)
+    true_M1 = diffprocess.get_M1_of_xi(y1, zeta)
+
     Ts = [100*i for i in range(1,51)]
     sims = 100
-    Cs = [1/2]
-    powers = [1, 5]
-    As = [0.2, 0.4, 0.6]
-    sigma_funcs = [sigma4, sigma7]
+    a_values = [0.000001, true_a/2, true_a, 2*true_a]
+    M1_values = [0.000001, true_M1/2, true_M1, 2*true_M1]
 
-    argList = list(product(Cs, powers, As, sigma_funcs))
+    argList = list(product(a_values, M1_values))
 
     Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
                                                                sims=sims,
-                                                               C=0,
+                                                               C=1/2,
                                                                A=0,
-                                                               power=p,
+                                                               power=1,
                                                                zeroVal=0.9,
-                                                               sigma_func=sigmafunc,
-                                                               sigma_func_A=sigmaA,
-                                                               neptune_tags=["Diffucions Coeffient"]) for C, p, sigmaA, sigmafunc in argList)
+                                                               a=a_val,
+                                                               M1=M1_val,
+                                                               neptune_tags=["aAndM1Values"]) for a_val, M1_val in argList)
+    
+    b = generate_linear_drift(1/2)
+    g = generate_reward_func(5, 0.9)
+    y1, zeta = get_y1_and_zeta(g)
+    diffprocess = DiffusionProcess(b, sigma)
+    true_a = diffprocess.get_a_of_invariant_density(zeta)
+    true_M1 = diffprocess.get_M1_of_xi(y1, zeta)
 
-    ### Simulating misspecification
     Ts = [100*i for i in range(1,51)]
     sims = 100
-    powers = [2, 5]
-    def b1(power: float):
-        return lambda x: -x**power
-    def b2(power: float):
-        return lambda x: -x**power + x**2+x
-    def b3(power: float):
-        return lambda x: -x**power + x
-    
-    driftPowers = [3, 13]
-    driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
-    
-    argList = list(product(powers, driftsAndPowers))
+    a_values = [0.000001, true_a/2, true_a, 2*true_a]
+    M1_values = [0.000001, true_M1/2, true_M1, 2*true_M1]
+
+    argList = list(product(a_values, M1_values))
+
     Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
                                                                sims=sims,
-                                                               C=0,
+                                                               C=1/2,
                                                                A=0,
-                                                               power=p,
-                                                               zeroVal=0.7,
-                                                               driftFuncAndPower=driftAndPower,
-                                                               neptune_tags=["Misspecification"]) for p, driftAndPower in argList)
+                                                               power=5,
+                                                               zeroVal=0.9,
+                                                               a=a_val,
+                                                               M1=M1_val,
+                                                               neptune_tags=["aAndM1Values"]) for a_val, M1_val in argList)
     

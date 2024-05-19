@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Callable, Union
 from scipy.integrate import quad, nquad, dblquad
+from scipy.optimize import minimize_scalar
 from functools import partial
 from collections.abc import Iterable
 import math
@@ -119,4 +120,15 @@ class DiffusionProcess():
         if isinstance(x, Iterable):
             return list(map(f, x))
         return f(x)
+    
+    def get_a_of_invariant_density(self, zeta):
+        eps = 0.0001
+        result = minimize_scalar(self.invariant_density, bounds=(0-eps, zeta+eps), method="bounded", options={'xatol': 1e-2})
+        return result.fun
+    
+    def get_M1_of_xi(self, y1, zeta):
+        eps = 0.0001
+        result = minimize_scalar(self.xi, bounds=(y1-eps, zeta+eps), method="bounded", options={'xatol': 1e-2})
+        return result.fun
+
 
