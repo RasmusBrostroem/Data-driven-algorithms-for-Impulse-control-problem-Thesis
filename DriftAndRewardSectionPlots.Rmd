@@ -216,7 +216,7 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
 
 ```{r}
 fitDriftAndRewardData <- avgData %>%
-  filter(zeroVal == 0.99) %>% 
+  filter(zeroVal == 0.9) %>% 
   group_by(C, power) %>% 
   summarise(
   pow=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
@@ -458,14 +458,14 @@ thresholds$zeroValText <- paste0("Payoff a = ", thresholds$zeroVal)
 Looking at how many thresholds were estimated at different times
 
 ```{r}
-tmpData <- thresholds %>% filter(zeroVal == 0.9, power==1)
+tmpData <- thresholds %>% filter(T==5000, power==1, zeroVal==0.9)
 
-ggplot(thresholds, aes(ST))+
-  geom_histogram(aes(y = after_stat(count / sum(count))), bins=50, color = "#000000", fill = "#1f78b4")+
-  ylab("Percentage of estimates made")+
+ggplot(tmpData, aes(ST))+
+  geom_histogram(bins=50, color = "#000000", fill = "#1f78b4")+
+  ylab("Number of estimates made")+
   xlab("Exporation time (ST)")+
-  ggtitle("Percentage of estimates made at different exploration times")+
-  facet_wrap(~CText, ncol = 1, scales="fixed")+
+  ggtitle("Number of estimates made at different exploration times for T=5000")+
+  facet_wrap(~CText, nrow = 1, scales="fixed")+
   theme_bw()+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
