@@ -27,7 +27,8 @@ thresholds <- read.csv("./SimulationData/DriftAndRewardData/DriftsAndRewardsThre
 ```
 
 ```{r}
-max(data$regret)
+data <- data %>% filter(power != "0.75")
+thresholds <- thresholds %>% filter(power != "0.75")
 ```
 
 
@@ -69,7 +70,7 @@ ggplot(avgData, aes(x=T, group=CText))+
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ zeroValText, scales="fixed")+
+  facet_grid(zeroValText ~ pText, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -102,7 +103,7 @@ ggplot(avgData, aes(x=T, group=CText))+
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ zeroValText, scales="fixed")+
+  facet_grid(zeroValText ~ pText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -158,7 +159,7 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ zeroValText, scales="free")+
+  facet_grid(zeroValText ~ pText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -190,7 +191,7 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ zeroValText, scales="free")+
+  facet_grid(zeroValText ~ pText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -317,7 +318,7 @@ ggplot(fittedValuesDF, aes(x=T, group=CText))+
 ```
 
 ```{r}
-tmpData <- fittedValuesDF %>% filter(zeroVal == 0.99)
+tmpData <- fittedValuesDF %>% filter(zeroVal == 0.7)
 
 ggplot(tmpData, aes(x=T))+
   geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
@@ -326,7 +327,7 @@ ggplot(tmpData, aes(x=T))+
                                 "Fitted value"="#fc8d62"))+
   ylab("Average cumulate regret")+
   xlab("Time horizon (T)")+
-  ggtitle("Fitted average cumulative regret for drift and payoff functions with a=0.99")+
+  ggtitle("Fitted average cumulative regret for drift and payoff functions with a=0.7")+
   facet_grid(pText ~ CText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -377,7 +378,7 @@ ggplot(avgData, aes(x=T, group=CText))+
 Individual plots
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.99)
+tmpData <- avgData %>% filter(zeroVal == 0.7)
 
 ggplot(tmpData, aes(x=T))+
   geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
@@ -386,7 +387,7 @@ ggplot(tmpData, aes(x=T))+
                                 "Target ST"="#fc8d62"))+
   ylab("Average exploration time (ST)")+
   xlab("Time horizon (T)")+
-  ggtitle("Average exploration time for drift and payoff functions with a=0.99")+
+  ggtitle("Average exploration time for drift and payoff functions with a=0.7")+
   facet_grid(pText ~ CText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -410,7 +411,7 @@ ggplot(tmpData, aes(x=T))+
 # Number of decisions
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.7)
+tmpData <- avgData %>% filter(zeroVal == 0.99)
 
 
 ggplot(tmpData, aes(x=T, group=CText))+
@@ -418,12 +419,12 @@ ggplot(tmpData, aes(x=T, group=CText))+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Difference in number of decisions")+
   xlab("Time horizon (T)")+
-  ggtitle("Difference in number of decisions made by optimal and data-driven strategy (a=0.7)")+
+  ggtitle("Difference in number of decisions made by optimal and data-driven strategy (a=0.99)")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_wrap(~pText, nrow=2, scales="fixed")+
+  facet_wrap(~pText, nrow=1, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -431,7 +432,7 @@ ggplot(tmpData, aes(x=T, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.13, 0.86),
+        legend.position = c(0.13, 0.76),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -460,10 +461,10 @@ Looking at how many thresholds were estimated at different times
 tmpData <- thresholds %>% filter(zeroVal == 0.9, power==1)
 
 ggplot(thresholds, aes(ST))+
-  geom_histogram(bins=100, color = "#000000", fill = "#1f78b4")+
-  ylab("Number of estimates made")+
+  geom_histogram(aes(y = after_stat(count / sum(count))), bins=50, color = "#000000", fill = "#1f78b4")+
+  ylab("Percentage of estimates made")+
   xlab("Exporation time (ST)")+
-  ggtitle("Number of estimates made at different exploration times")+
+  ggtitle("Percentage of estimates made at different exploration times")+
   facet_wrap(~CText, ncol = 1, scales="fixed")+
   theme_bw()+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -527,8 +528,8 @@ ystart_text$cut_number <- "(179,433]"
 
 
 ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
-  geom_boxplot(aes(color=CText), outliers = T, outlier.size =0.7)+
-  geom_hline(yintercept=0,linetype="dashed", alpha = 0.5)+
+  geom_boxplot(aes(color=CText),outliers = T, outlier.size =0.7)+
+  geom_hline(yintercept=0,linetype="dashed", alpha = 0.9)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
   ggtitle("Difference between estimated and optimal threshold for exploration intervals (a=0.99)")+
@@ -536,7 +537,7 @@ ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_wrap(~pText, nrow=2, scales="free_y")+
+  facet_wrap(~pText, nrow = 1, scales="free_y")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -544,7 +545,8 @@ ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.99, 0.33),
+        legend.position = c(0.99, 0.81),
+        #legend.position = "None",
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -666,4 +668,115 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
 ```
 
 
+## Better thresholds distribution
+
+```{r}
+DriftAndRewardThresholds <- thresholds %>% filter(zeroVal == 0.99)
+
+DriftAndRewardThresholds <- DriftAndRewardThresholds %>%
+  mutate(cut_number = cut_number(ST, n=5),
+         diffToOptimal = yhat-y_star) %>% 
+  group_by(CText, cut_number, power) %>% 
+  mutate(
+    upperlimit = boxplot.stats(diffToOptimal)$stats[c(1, 5)][2],
+    lowerlimit = boxplot.stats(diffToOptimal)$stats[c(1, 5)][1]
+  ) %>% 
+  ungroup()
+
+DriftAndRewardThresholds <- DriftAndRewardThresholds %>% mutate(isLowerOutlier = diffToOptimal<lowerlimit,
+                                                                isUpperOutlier = diffToOptimal>upperlimit)
+
+loweroutliers <- DriftAndRewardThresholds %>%
+  filter(diffToOptimal < lowerlimit) %>% 
+  group_by(CText, cut_number) %>% 
+  summarise(n = n(),
+            avgDiff = mean(diffToOptimal),
+            .groups = "drop"
+            )
+
+upperoutliers <- DriftAndRewardThresholds %>%
+  filter(diffToOptimal > upperlimit) %>% 
+  group_by(CText, cut_number) %>% 
+  summarise(n = n(),
+            avgDiff = mean(diffToOptimal),
+            .groups = "drop"
+            )
+
+ystart_text <- DriftAndRewardThresholds %>% group_by(CText, pText) %>% 
+  summarise(
+    ystart_text = paste0("Opt. y = ", round(unique(y_star),2)),
+    diffToOptimal = max(diffToOptimal),
+    .groups = "drop"
+  )
+
+ystart_text$cut_number <- "(179,433]"
+
+
+ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
+  geom_boxplot(aes(color=CText),outliers = F, outlier.size =0.7)+
+  geom_hline(yintercept=0,linetype="dashed", alpha = 0.9)+
+  ylab("Estimated threshold - Optimal threshold")+
+  xlab("Exploration time interval")+
+  ggtitle("Difference between estimated and optimal threshold for exploration intervals (a=0.99)")+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
+  # labs(color = "Drift Slope")+
+  facet_wrap(pText ~ CText, ncol=3, scales="free_y")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        #legend.position = c(0.99, 0.33),
+        legend.position = "None",
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+```{r}
+loweroutliersData <- DriftAndRewardThresholds %>% filter(isLowerOutlier == TRUE)
+upperoutliersData <- DriftAndRewardThresholds %>% filter(isUpperOutlier == TRUE)
+
+outliersData <- rbind(loweroutliersData, upperoutliersData)
+
+ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
+  geom_boxplot(data=loweroutliersData, aes(color=CText), outliers = T, outlier.size =0.9)+
+  geom_boxplot(data=upperoutliersData, aes(color=CText), outliers = T, outlier.size =0.9)+
+  geom_hline(yintercept=0,linetype="dashed", alpha = 0.5)+
+  ylab("Estimated threshold - Optimal threshold")+
+  xlab("Exploration time interval")+
+  ggtitle("Difference between estimated and optimal threshold (a=0.99, Outliers)")+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
+  labs(color = "Drift Slope")+
+  facet_wrap(pText ~ CText, ncol=3, scales="free_y", drop = FALSE)+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = "None",
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
 
