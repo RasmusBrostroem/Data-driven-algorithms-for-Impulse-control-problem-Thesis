@@ -19,11 +19,12 @@ library(boot)
 library(plotrix)
 library(nlstools)
 library(kableExtra)
+library(latex2exp)
 ```
 
 ```{r}
-#setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
-setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 ExplorationFormsData <- read.csv("./SimulationData/ExplorationData/ExplorationFormsStrategiesData.csv")
 ```
 
@@ -72,21 +73,52 @@ avgExplorationData <- ExplorationFormsData %>% group_by(T, C, power, ST_form) %>
 avgExplorationData$C = as.factor(avgExplorationData$C)
 avgExplorationData$power = as.factor(avgExplorationData$power)
 avgExplorationData$ST_form = as.factor(avgExplorationData$ST_form)
-avgExplorationData$C_text = paste0("Drift slope = ", avgExplorationData$C)
+avgExplorationData$C_text = paste0("C = ", avgExplorationData$C)
 avgExplorationData$P_text = paste0("Payoff power = ", avgExplorationData$power)
 ```
+
+```{r}
+unique(avgExplorationData$ST_form)
+```
+
 
 
 ```{r}
 avgExplorationDataNew <- avgExplorationData %>% filter(ST_form != "T^(3/4)")
 ggplot(avgExplorationDataNew, aes(x=T, group=ST_form))+
-  geom_line(aes(y=avgRegret, color=ST_form))+
-  labs(title = "Average regret for Exploration forms",
-       y = "Average regret",
+  geom_line(aes(y=avgRegret, color=ST_form), size=1.2)+
+  labs(title = "Average cumulative regret for different exploration orders",
+       y = "Average cumulative regret",
        x = "Time horizon (T)",
-       color = "Exploration: ")+
+       color = "Exploration order")+
   facet_grid(P_text ~ C_text, scales = "free")+
-  theme(legend.position="bottom")
+  scale_color_manual(values = c("2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)" = "#4477AA",
+                                "T^(1/2)" = "#EE6677",
+                                "T^(1/3)" = "#228833",
+                                "T^(1/4)" = "#CCBB44",
+                                "T^(2/3)" = "#AA3377"),
+                     labels = c(TeX("$2(\\sqrt{2\\sqrt{T}+1}+\\sqrt{T} + 1)$"),
+                                TeX("$T^{1/2}$"),
+                                TeX("$T^{1/3}$"),
+                                TeX("$T^{1/4}$"),
+                                TeX("$T^{2/3}$")))+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
+  theme(plot.title = element_text(face="bold",size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.23, 0.78),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-3, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
 
