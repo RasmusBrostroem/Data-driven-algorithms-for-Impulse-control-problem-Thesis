@@ -106,7 +106,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
                                 "sigma3" = "#8da0cb"),
                      labels = c(TeX("$\\sigma_1$"), TeX("$\\sigma_2$"), TeX("$\\sigma_3$")))+
   labs(color = "Drift Slope")+
-  facet_grid(aText ~ pText, scales="fixed")+
+  facet_grid(pText ~ aText, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -114,7 +114,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.07, 0.88),
+        legend.position = c(0.07, 0.83),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -139,7 +139,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
                                 "sigma3" = "#8da0cb"),
                      labels = c(TeX("$\\sigma_1$"), TeX("$\\sigma_2$"), TeX("$\\sigma_3$")))+
   labs(color = "Drift Slope")+
-  facet_grid(aText ~ pText, scales="fixed")+
+  facet_grid(pText ~ aText, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -147,7 +147,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.07, 0.88),
+        legend.position = c(0.07, 0.83),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -236,7 +236,7 @@ fittedValuesDF <- merge(avgData, test3, by=c("sigma_func_A", "power", "T", "diff
 ```
 
 ```{r}
-tmpData <- fittedValuesDF %>% filter(diffusionFunc == "sigma2")
+tmpData <- fittedValuesDF %>% filter(diffusionFunc == "sigma3")
 
 ggplot(tmpData, aes(x=T))+
   geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
@@ -245,8 +245,8 @@ ggplot(tmpData, aes(x=T))+
                                 "Fitted value"="#fc8d62"))+
   ylab("Average cumulate regret")+
   xlab("Time horizon (T)")+
-  ggtitle(TeX("\\textbf{Fitted average cumulative regret for $\\sigma_2$}"))+
-  facet_grid(aText ~ pText, scales="free")+
+  ggtitle(TeX("\\textbf{Fitted average cumulative regret for $\\sigma_3$}"))+
+  facet_grid(pText ~ aText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -254,7 +254,7 @@ ggplot(tmpData, aes(x=T))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.17, 0.92),
+        legend.position = c(0.17, 0.88),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -269,7 +269,7 @@ ggplot(tmpData, aes(x=T))+
 ## Exploration times
 
 ```{r}
-tmpData <- avgData %>% filter(diffusionFunc == "sigma3")
+tmpData <- avgData %>% filter(diffusionFunc == "sigma2")
 
 ggplot(tmpData, aes(x=T))+
   geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
@@ -278,8 +278,8 @@ ggplot(tmpData, aes(x=T))+
                                 "Target ST"="#fc8d62"))+
   ylab("Average exploration time (ST)")+
   xlab("Time horizon (T)")+
-  ggtitle(TeX("\\textbf{Average exploration time for $\\sigma_3$}"))+
-  facet_grid(aText ~ pText, scales="free")+
+  ggtitle(TeX("\\textbf{Average exploration time for $\\sigma_2$}"))+
+  facet_grid(pText ~ aText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -287,7 +287,7 @@ ggplot(tmpData, aes(x=T))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.15, 0.91),
+        legend.position = c(0.15, 0.88),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -313,7 +313,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
                                 "sigma3" = "#8da0cb"),
                      labels = c(TeX("$\\sigma_1$"), TeX("$\\sigma_2$"), TeX("$\\sigma_3$")))+
   labs(color = "Drift Slope")+
-  facet_grid(aText ~ pText, scales="fixed")+
+  facet_grid(pText ~ aText, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -321,7 +321,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.07, 0.88),
+        legend.position = c(0.07, 0.84),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -346,12 +346,14 @@ thresholds$aText <- as.factor(thresholds$aText)
 Looking at distribution of thresholds
 
 ```{r}
-ggplot(thresholds, aes(ST))+
-  geom_histogram(bins=100, color = "#000000", fill = "#1f78b4")+
+tmp <- thresholds %>% filter(T==5000, power==1)
+
+ggplot(tmp, aes(ST))+
+  geom_histogram(bins=50, color = "#000000", fill = "#1f78b4")+
   ylab("Number of estimates made")+
   xlab("Exporation time (ST)")+
-  ggtitle("Number of estimates made at different exploration times")+
-  facet_grid(aText~diffusionFunc, scales="fixed")+
+  ggtitle("Number of estimates made at different exploration times with T=5000")+
+  facet_grid(diffusionFunc~aText, scales="fixed")+
   theme_bw()+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
@@ -414,7 +416,7 @@ ystart_text$cut_number <- "(179,433]"
 
 
 ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
-  geom_boxplot(aes(color=diffusionFunc), outliers = T, outlier.size = 0.7)+
+  geom_boxplot(aes(color=diffusionFunc), outliers = F, outlier.size = 0.7)+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
@@ -423,7 +425,7 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
                                 "sigma3" = "#8da0cb"),
                      labels = c(TeX("$\\sigma_2$"), TeX("$\\sigma_3$")))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ aText, scales="free")+
+  facet_wrap(pText ~ aText, ncol=3, scales="free_y")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -431,7 +433,7 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.05, 0.91),
+        legend.position = c(0.29, 0.75),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
