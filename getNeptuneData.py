@@ -96,9 +96,10 @@ if __name__ == "__main__":
     # id_list = [f"DIF-{i}" for i in range(409, 441)]
     # download_neptune_data(ids=id_list, file_name="MiseKernelBandwidth")
 
-    # ### Download Optimal vs data-strat with different exploration forms
-    # id_list = [f"DIF-{i}" for i in range(441, 465)]
+    ### Download Optimal vs data-strat with different exploration forms
+    id_list = [f"DIF-{i}" for i in range(441, 465)]
     # download_neptune_data(ids=id_list, file_name="ExplorationFormsStrategiesData")
+    download_threshold_data(id_list, "ExplorationFormsStrategiesThresholdData")
 
     # ### Download Diffusion coefficient data
     # id_list = [f"DIF-{i}" for i in range(509, 521)]
@@ -111,9 +112,9 @@ if __name__ == "__main__":
     #download_threshold_data(id_list, "MisspecificationThresholdData")
 
     ### Download Diffusion a and M1 data
-    id_list = [f"DIF-{i}" for i in range(585, 617)]
-    download_neptune_data(ids=id_list, file_name="aAndM1Data")
-    download_threshold_data(id_list, "aAndM1ThresholdsData")
+    # id_list = [f"DIF-{i}" for i in range(585, 617)]
+    # download_neptune_data(ids=id_list, file_name="aAndM1Data")
+    # download_threshold_data(id_list, "aAndM1ThresholdsData")
 
 
 
