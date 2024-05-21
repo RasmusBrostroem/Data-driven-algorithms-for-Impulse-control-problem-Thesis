@@ -1,0 +1,421 @@
+---
+title: "aAndM1Plots"
+author: "Rasmus Brostrøm"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(stats)
+library(boot)
+library(plotrix)
+library(nlstools)
+library(kableExtra)
+library(khroma)
+library(cowplot)
+library(latex2exp)
+```
+
+```{r}
+setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+#setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
+data <- read.csv("./SimulationData/aAndM1Data/aAndM1Data.csv")
+thresholds <- read.csv("./SimulationData/aAndM1Data/aAndM1ThresholdsData.csv")
+```
+
+```{r}
+data <- data %>% mutate(new_a = a/true_a,
+                                new_M1 = M1/true_M1)
+
+data <- data %>% mutate(aText = case_when(
+                                        a == 0.0000010 ~ "a_s = 1e-06",
+                                        new_a == 0.5 ~ "a_s = 0.5a",
+                                        new_a == 1 ~ "a_s = a",
+                                        new_a == 2 ~ "a_s = 2a"),
+                                M1Text = case_when(
+                                        M1 == 0.0000010 ~ "Strat M1 = 1e-06",
+                                        new_M1 == 0.5 ~ "Strat M1 = 0.5M1",
+                                        new_M1 == 1 ~ "Strat M1 = M1",
+                                        new_M1 == 2 ~ "Strat M1 = 2M1"
+                                ))
+
+
+
+
+data$power <-  as.factor(data$power)
+data$pText <- paste0("Payoff power = ", data$power)
+data$M1Text <- factor(data$M1Text, levels = c("Strat M1 = 1e-06", "Strat M1 = 0.5M1", "Strat M1 = M1", "Strat M1 = 2M1"))
+data$aText <- factor(data$aText, levels = c("a_s = 1e-06", "a_s = 0.5a", "a_s = a", "a_s = 2a"))
+```
+
+
+# Average data
+
+```{r}
+avgData <- data %>%
+  group_by(T, pText, aText, M1Text) %>%
+  summarise(avgRegret = mean(regret),
+            sdRegret = sd(regret),
+            varRegret = var(regret),
+            avgST = mean(S_T),
+            seST = std.error(S_T),
+            avgDataDecisions = mean(dataStratNrDecisions),
+            seDataDecisions =std.error(dataStratNrDecisions),
+            avgOptDecisions = mean(optNrDecisions),
+            seOptDecisions = std.error(optNrDecisions),
+            .groups = "drop")
+```
+
+
+```{r}
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=avgRegret, color=aText), size=1.2)+
+  ylab("Average cumulative regret")+
+  xlab("Time horizon (T)")+
+  ggtitle(TeX("\\textbf{Average cumulative regret using difference values of $a$ and $M_1$}"))+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.11, 0.79),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+
+```{r}
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=sdRegret, color=aText), size=1.2)+
+  ylab("Standard deviation of cumulative regret")+
+  xlab("Time horizon (T)")+
+  ggtitle(TeX("\\textbf{Standard deviation of cumulative regret using difference values of $a$ and $M_1$}"))+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.11, 0.79),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+# Fitting average cumulative regret
+
+```{r}
+fitDriftAndRewardData <- avgData %>%
+  filter(pText == "Payoff power = 1") %>% 
+  group_by(M1Text, aText) %>% 
+  summarise(
+  pow=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgRegret ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgRegret~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,4]<0.05,
+  c=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[2,1],
+  cSE = summary(nls(avgRegret ~ I(a*T^p), start=list(p=1,a=1), trace=F))$coefficients[2,2],
+  cSig = summary(nls(avgRegret~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[2,4]<0.05,
+  .groups = "drop")
+
+fitDriftAndRewardData$pConf <- paste0(round(fitDriftAndRewardData$pow, 3), "±", round(2*fitDriftAndRewardData$powSE, 4))
+fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", round(2*fitDriftAndRewardData$cSE, 4))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL) %>% 
+  kable_classic() %>% 
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
+  kable_classic() %>% 
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
+```
+
+
+
+
+# Exploration times
+
+```{r}
+#tmpData <- avgData %>% filter(aText == "a_s = 1e-06")
+tmpData <- avgData %>% filter(aText == "a_s = 0.5a")
+#tmpData <- avgData %>% filter(aText == "a_s = a")
+#tmpData <- avgData %>% filter(aText == "a_s = 2a")
+
+ggplot(tmpData, aes(x=T))+
+  geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
+  geom_line(aes(y=T^{2/3}, color="Target ST"), size=1.2)+
+  scale_color_manual(values = c("Actual ST" = "#4477AA",
+                                "Target ST"="#EE6677"))+
+  ylab("Average exploration time (ST)")+
+  xlab("Time horizon (T)")+
+  ggtitle(TeX("\\textbf{Average exploration time for $\\sigma_2$}"))+
+  facet_grid(pText ~ M1Text, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.15, 0.88),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+# Number of decisions
+
+```{r}
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=aText), size=1.2)+
+  ylab("Difference in number of decisions")+
+  xlab("Time horizon (T)")+
+  ggtitle("Difference in number of decisions made by optimal and data-driven strategy")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.11, 0.79),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+
+# Thresholds
+
+```{r}
+thresholds <- thresholds %>% mutate(new_a = a/true_a,
+                                new_M1 = M1/true_M1)
+
+thresholds <- thresholds %>% mutate(aText = case_when(
+                                        a == 0.0000010 ~ "a_s = 1e-06",
+                                        new_a == 0.5 ~ "a_s = 0.5a",
+                                        new_a == 1 ~ "a_s = a",
+                                        new_a == 2 ~ "a_s = 2a"),
+                                M1Text = case_when(
+                                        M1 == 0.0000010 ~ "Strat M1 = 1e-06",
+                                        new_M1 == 0.5 ~ "Strat M1 = 0.5M1",
+                                        new_M1 == 1 ~ "Strat M1 = M1",
+                                        new_M1 == 2 ~ "Strat M1 = 2M1"
+                                ))
+
+
+
+
+thresholds$power <-  as.factor(thresholds$power)
+thresholds$pText <- paste0("Payoff power = ", thresholds$power)
+thresholds$M1Text <- factor(thresholds$M1Text, levels = c("Strat M1 = 1e-06", "Strat M1 = 0.5M1", "Strat M1 = M1", "Strat M1 = 2M1"))
+thresholds$aText <- factor(thresholds$aText, levels = c("a_s = 1e-06", "a_s = 0.5a", "a_s = a", "a_s = 2a"))
+```
+
+```{r}
+tmp <- thresholds %>% filter(T==5000, power==1)
+
+ggplot(tmp, aes(ST))+
+  geom_histogram(bins=50, color = "#000000", fill = "#1f78b4")+
+  ylab("Number of estimates made")+
+  xlab("Exporation time (ST)")+
+  ggtitle("Number of estimates made at different exploration times with T=5000")+
+  facet_grid(M1Text~aText, scales="fixed")+
+  theme_bw()+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.47, 0.91),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+
+```{r}
+thresholds <- thresholds %>%
+  mutate(cut_number = cut_number(ST, n=5),
+         diffToOptimal = yhat-y_star) %>% 
+  group_by(pText, cut_number, aText, M1Text) %>% 
+  mutate(
+    upperlimit = boxplot.stats(diffToOptimal)$stats[c(1, 5)][2],
+    lowerlimit = boxplot.stats(diffToOptimal)$stats[c(1, 5)][1]
+  ) %>% 
+  ungroup()
+
+thresholds <- thresholds %>%
+  mutate(isLowerOutlier = diffToOptimal<lowerlimit,
+         isUpperOutlier = diffToOptimal>upperlimit,
+         isOutlier = diffToOptimal<lowerlimit| diffToOptimal>upperlimit)
+
+loweroutliers <- thresholds %>%
+  filter(diffToOptimal < lowerlimit) %>% 
+  group_by(pText, cut_number, aText, M1Text) %>% 
+  summarise(n = n(),
+            avgDiff = mean(diffToOptimal),
+            .groups = "drop"
+            )
+
+upperoutliers <- thresholds %>%
+  filter(diffToOptimal > upperlimit) %>% 
+  group_by(pText, cut_number, aText, M1Text) %>% 
+  summarise(n = n(),
+            avgDiff = mean(diffToOptimal),
+            .groups = "drop"
+            )
+
+ystart_text <- thresholds %>% group_by(pText, cut_number, aText, M1Text) %>% 
+  summarise(
+    ystart_text = paste0("Opt. y = ", round(unique(y_star),2)),
+    diffToOptimal = max(diffToOptimal),
+    .groups = "drop"
+  )
+
+ystart_text$cut_number <- "(179,433]"
+
+
+ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
+  geom_boxplot(aes(color=aText), outliers = F, outlier.size = 0.7)+
+  geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
+  ylab("Estimated threshold - Optimal threshold")+
+  xlab("Exploration time interval")+
+  ggtitle("Difference between estimated and optimal threshold for values of a and M1")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free_y")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.09, 0.38),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+```{r}
+loweroutliersData <- thresholds %>% filter(isLowerOutlier == TRUE)
+upperoutliersData <- thresholds %>% filter(isUpperOutlier == TRUE)
+
+outliersData <- rbind(loweroutliersData, upperoutliersData)
+
+negativeOutliers <- thresholds %>% filter(isOutlier == TRUE & diffToOptimal < 0)
+positiveOutliers <- thresholds %>% filter(isOutlier == TRUE & diffToOptimal > 0)
+
+outliersData2 <- rbind(negativeOutliers, positiveOutliers)
+
+ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
+  geom_boxplot(data=loweroutliersData, aes(color=aText),
+               outliers = T, outlier.size = 0.9)+
+  geom_boxplot(data=upperoutliersData, aes(color=aText),
+               outliers = T, outlier.size = 0.9)+
+  geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
+  ylab("Estimated threshold - Optimal threshold")+
+  xlab("Exploration time interval")+
+  ggtitle("Difference between estimated and optimal threshold for values of a and M1 (Outliers)")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free_y")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.09, 0.38),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
