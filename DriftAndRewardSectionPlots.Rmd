@@ -414,17 +414,17 @@ ggplot(tmpData, aes(x=T))+
 tmpData <- avgData %>% filter(zeroVal == 0.99)
 
 
-ggplot(tmpData, aes(x=T, group=CText))+
+ggplot(avgData, aes(x=T, group=CText))+
   geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=CText), size=1.2)+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Difference in number of decisions")+
   xlab("Time horizon (T)")+
-  ggtitle("Difference in number of decisions made by optimal and data-driven strategy (a=0.99)")+
+  ggtitle("Difference in number of decisions made by optimal and data-driven strategy")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_wrap(~pText, nrow=1, scales="fixed")+
+  facet_grid(zeroValText~pText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -432,7 +432,7 @@ ggplot(tmpData, aes(x=T, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.13, 0.76),
+        legend.position = c(0.32, 0.91),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
