@@ -307,7 +307,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
   geom_hline(yintercept=0,linetype="dashed")+
   ylab("Difference in number of decisions")+
   xlab("Time horizon (T)")+
-  ggtitle("Difference in number of decisions made by optimal and data-driven for different diffusion coefficients")+
+  ggtitle("Difference in number of decisions made by optimal and data-driven strategy")+
   scale_color_manual(values = c("sigma1" = "#66c2a5",
                                 "sigma2" = "#fc8d62",
                                 "sigma3" = "#8da0cb"),
