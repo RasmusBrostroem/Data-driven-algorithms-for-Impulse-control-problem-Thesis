@@ -60,17 +60,19 @@ avgData$pText = paste0("Payoff power = ", avgData$power)
 Average cumulative regret plot
 
 ```{r}
-ggplot(avgData, aes(x=T, group=CText))+
+tmpData <- avgData %>% filter(zeroVal == 0.99)
+
+ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=avgRegret, color=CText), size=1.2)+
   #geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Average cumulative regret")+
   xlab("Time horizon (T)")+
-  ggtitle("Average cumulative regret for drift and payoff functions")+
+  ggtitle("Average cumulative regret for drift and payoff functions (a=0.99)")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(zeroValText ~ pText, scales="fixed")+
+  facet_wrap(~ pText, nrow=1, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -78,7 +80,7 @@ ggplot(avgData, aes(x=T, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.32, 0.91),
+        legend.position = c(0.31, 0.74),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -94,24 +96,26 @@ ggplot(avgData, aes(x=T, group=CText))+
 Variance of cumulative regret plot
 
 ```{r}
-ggplot(avgData, aes(x=T, group=CText))+
+tmpData <- avgData %>% filter(zeroVal == 0.99)
+
+ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=sdRegret, color=CText), size=1.2)+
   ylab("Standard deviation of cumulative regret")+
   xlab("Time horizon (T)")+
-  ggtitle("Standard deviation of cumulative regret for drift and payoff functions")+
+  ggtitle("Standard deviation of cumulative regret for drift and payoff functions (a=0.99)")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(zeroValText ~ pText, scales="free")+
+  facet_wrap(~ pText, nrow = 1, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
-        legend.justification= c(1, 0), 
-        legend.position = c(0.32, 0.91),
+        legend.justification= c(1, 0),
+        legend.position = c(0.12, 0.73),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -150,16 +154,18 @@ avgDataPerTime$pText = paste0("Payoff power = ", avgDataPerTime$power)
 Average cumulative regret plot
 
 ```{r}
-ggplot(avgDataPerTime, aes(x=T, group=CText))+
+tmpData <- avgDataPerTime %>% filter(zeroVal == 0.99)
+
+ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=avgRegret, color=CText), size=1.2)+
   ylab("Average cumulative regret per time unit")+
   xlab("Time horizon (T)")+
-  ggtitle("Average cumulative regret per time unit for drift and payoff functions")+
+  ggtitle("Average cumulative regret per time unit for drift and payoff functions (a=0.99)")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(zeroValText ~ pText, scales="free")+
+  facet_wrap(~ pText, nrow=1, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -167,7 +173,7 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.32, 0.91),
+        legend.position = c(0.29, 0.74),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -182,16 +188,18 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
 Variance of cumulative regret plot
 
 ```{r}
-ggplot(avgDataPerTime, aes(x=T, group=CText))+
+tmpData <- avgDataPerTime %>% filter(zeroVal == 0.99)
+
+ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=sdRegret, color=CText), size=1.2)+
-  ylab("Standard deviation of cumulative regret per time unit")+
+  ylab("SD of cumulative regret per time unit")+
   xlab("Time horizon (T)")+
-  ggtitle("Standard deviation of cumulative regret per time unit for drift and payoff functions")+
+  ggtitle("Standard deviation of cumulative regret per time unit (a=0.99)")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(zeroValText ~ pText, scales="free")+
+  facet_wrap(~ pText, nrow=1, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -199,7 +207,7 @@ ggplot(avgDataPerTime, aes(x=T, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.32, 0.91),
+        legend.position = c(0.29, 0.74),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
