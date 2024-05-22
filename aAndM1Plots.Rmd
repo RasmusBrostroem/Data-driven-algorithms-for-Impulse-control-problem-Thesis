@@ -20,6 +20,7 @@ library(kableExtra)
 library(khroma)
 library(cowplot)
 library(latex2exp)
+library(ggh4x)
 ```
 
 ```{r}
@@ -354,15 +355,15 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
                                 "a_s = a" = "#228833",
                                 "a_s = 2a" = "#CCBB44"),
                      labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
-  facet_grid(pText ~ M1Text, scales="free_y")+
+  ggh4x::facet_grid2(M1Text ~ pText, scales="free_y", independent = "y")+
   theme_bw()+
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.09, 0.38),
+        legend.position = c(0.98, 0.145),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -399,7 +400,7 @@ ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
                                 "a_s = a" = "#228833",
                                 "a_s = 2a" = "#CCBB44"),
                      labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
-  facet_grid(pText ~ M1Text, scales="free_y")+
+  ggh4x::facet_grid2(M1Text ~ pText, scales="free_y", independent = "y")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -407,7 +408,7 @@ ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.09, 0.38),
+        legend.position = c(0.98, 0.145),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
