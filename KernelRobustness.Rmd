@@ -33,6 +33,13 @@ MiseBandwidth <- read.csv("./SimulationData/Kernels/MiseKernelBandwidth.csv")
 ```
 
 ```{r}
+data <- data %>% filter(C != 2)
+Misedata <- Misedata %>% filter(C != 2)
+MiseBandwidth <- MiseBandwidth %>% filter(C != 2)
+```
+
+
+```{r}
 highcontrastColors <- color("high contrast")
 plot_scheme(highcontrastColors(4), colours = T, names = T, size = 0.9)
 ```
@@ -43,7 +50,7 @@ plot_scheme(highcontrastColors(4), colours = T, names = T, size = 0.9)
 First we can look at the mean integrated squared error (MISE) of the invariant density to see how changing the kernel affects the estimation of the true density. The reason, that we are looking at the MISE is that it gives a total overview of the risk associated with choice of kernel as it evaluates the deviations of the estimate to the true value over the whole support instead of evaluating it point wise. We are looking at four kernel methods: Epanechnikov, Gaussian, Linear (Uniform) and Tophat (Triangle) for four different drift functions:
 
 $$
-b(x) = -Cx, \quad C\in \{0.1, 0.5, 2, 4\}
+b(x) = -Cx, \quad C\in \{0.1, 0.5, 4\}
 $$
 
 and for exploration time $S_T$ ranging from 10 to 300 with increments of 10. Each combination of kernel method, drift and exploration time is simulated 100 times and the average is calculated to approximate the MISE.
@@ -58,7 +65,7 @@ AvgData <- Misedata %>% group_by(ST, C, kernelMethod) %>%
 AvgData$C = as.factor(AvgData$C)
 AvgData$kernelMethod = as.factor(AvgData$kernelMethod)
 AvgData$kernelMethod = str_to_title(AvgData$kernelMethod)
-AvgData$CText = paste0("Drift slope = ", AvgData$C)
+AvgData$CText = paste0("C = ", AvgData$C)
 ```
 
 ```{r}
@@ -80,14 +87,13 @@ MISEKernel <- ggplot(AvgData, aes(x=ST, group=kernelMethod))+
                                 "Tophat" = "#CCBB44"))+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face = "bold", size=13),
+  theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0),
         #legend.position = c(0.47, 0.85),
-        legend.position = c(0.24, 0.58),
+        legend.position = c(0.32, 0.64),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -120,14 +126,13 @@ SISEKernel <- ggplot(AvgData, aes(x=ST, group=kernelMethod))+
                                 "Tophat" = "#CCBB44"))+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face="bold",size=13),
+  theme(plot.title = element_text(face="bold",size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0),
         #legend.position = c(0.47, 0.85),
-        legend.position = c(0.24, 0.58),
+        legend.position = c(0.32, 0.64),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -164,21 +169,20 @@ AvgDataCdf <- Misedata %>% group_by(ST, C) %>%
                                     .groups = "drop")
 
 AvgDataCdf$C = as.factor(AvgDataCdf$C)
-AvgDataCdf$CText = paste0("Drift slope = ", AvgDataCdf$C)
+AvgDataCdf$CText = paste0("C = ", AvgDataCdf$C)
 ```
 
 
 ```{r}
 ggplot(AvgDataCdf, aes(x=ST, group=CText))+
-  geom_line(aes(y=avgMiseCdf, color=CText), size = 1.5)+
+  geom_line(aes(y=avgMiseCdf, color=CText), size = 1.2)+
   ylab("Mean integrated squared error (MISE)")+
   xlab("Exploration time (ST)")+
   ggtitle("Mean integrated squared error for empirical distribution function")+
   labs(color = "Drift slope")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#4477AA",
-                                "Drift slope = 0.5" = "#EE6677",
-                                "Drift slope = 2" = "#228833",
-                                "Drift slope = 4" = "#CCBB44"))+
+  scale_color_manual(values = c("C = 0.1" = "#4477AA",
+                                "C = 0.5" = "#EE6677",
+                                "C = 4" = "#228833"))+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
   theme(plot.title = element_text(face="bold",size=13),
@@ -186,7 +190,7 @@ ggplot(AvgDataCdf, aes(x=ST, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.98, 0.85),
+        legend.position = c(0.98, 0.82),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -208,14 +212,13 @@ Lets see how stable the empirical distribution function is for the different dri
 ```{r}
 ggplot(AvgDataCdf, aes(x=ST, group=CText))+
   geom_line(aes(y=sdMiseCdf, color=CText), size = 1.2)+
-  ylab("Standard deviation of integrated squared error")+
+  ylab("SD of integrated squared error")+
   xlab("Exploration time (ST)")+
-  ggtitle("Standard deviation of integrated squared error for empirical distribution function")+
+  ggtitle("SD of integrated squared error for empirical distribution function")+
   labs(color = "Drift slope")+
-  scale_color_manual(values = c("Drift slope = 0.1" = "#4477AA",
-                                "Drift slope = 0.5" = "#EE6677",
-                                "Drift slope = 2" = "#228833",
-                                "Drift slope = 4" = "#CCBB44"))+
+  scale_color_manual(values = c("C = 0.1" = "#4477AA",
+                                "C = 0.5" = "#EE6677",
+                                "C = 4" = "#228833"))+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
   theme(plot.title = element_text(face="bold",size=13),
@@ -223,7 +226,7 @@ ggplot(AvgDataCdf, aes(x=ST, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.98, 0.85),
+        legend.position = c(0.98, 0.82),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -436,7 +439,7 @@ avgBandwidthData <- MiseBandwidth %>% group_by(ST, C, bandwidth_a, bandwidth_p, 
             .groups = "drop")
 
 avgBandwidthData$C = as.factor(avgBandwidthData$C)
-avgBandwidthData$CText = paste0("Drift slope = ", avgBandwidthData$C)
+avgBandwidthData$CText = paste0("C = ", avgBandwidthData$C)
 avgBandwidthData$bandwidth_a = as.factor(avgBandwidthData$bandwidth_a)
 avgBandwidthData$bandwidth_p = as.factor(avgBandwidthData$bandwidth_p)
 ```
@@ -466,15 +469,14 @@ MISEBWa <- ggplot(avgData_a, aes(x=ST, group=aText))+
                                 "a = 5" = "#EE6677",
                                 "a = 10" = "#228833"))+
   theme_bw()+
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face="bold",size=13),
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
+  theme(plot.title = element_text(face="bold",size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        #legend.position = c(0.48, 0.88),
-        legend.position = c(0.24, 0.7),
+        legend.position = c(0.32, 0.72),
+        #legend.position = c(0.29, 0.72),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -508,15 +510,14 @@ SISEBWa <- ggplot(avgData_a, aes(x=ST, group=aText))+
                                 "a = 5" = "#EE6677",
                                 "a = 10" = "#228833"))+
   theme_bw()+
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face="bold",size=13),
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
+  theme(plot.title = element_text(face="bold",size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        #legend.position = c(0.47, 0.88),
-        legend.position = c(0.24, 0.7),
+        legend.position = c(0.32, 0.72),
+        #legend.position = c(0.29, 0.72),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -568,15 +569,14 @@ MISEBWp <- ggplot(avgData_p, aes(x=ST, group=pText))+
                                 "p = -0.25" = "#ee6677",
                                 "p = -0.125" = "#228833"))+
   theme_bw()+
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face="bold",size=13),
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
+  theme(plot.title = element_text(face="bold",size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0),
-        legend.position = c(0.24, 0.7),
-        #legend.position = c(0.48, 0.88),
+        legend.position = c(0.32, 0.72),
+        #legend.position = c(0.29, 0.72),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -611,14 +611,13 @@ SISEBWp <- ggplot(avgData_p, aes(x=ST, group=pText))+
                                 "p = -0.125" = "#228833"))+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face="bold",size=13),
+  theme(plot.title = element_text(face="bold",size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0),
-        legend.position = c(0.24, 0.7),
-        #legend.position = c(0.48, 0.88),
+        legend.position = c(0.32, 0.72),
+        #legend.position = c(0.29, 0.72),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -651,7 +650,7 @@ avgData_methods <- avgData_methods %>% mutate(method = ifelse(bandwidth_a == 1, 
 
 MISEBWmethod <- ggplot(avgData_methods, aes(x=ST, group=method))+
   geom_line(aes(y=avgMisePdf, color=method), size=1.2)+
-  facet_wrap(~CText, nrow = 1, scales = "fixed")+
+  facet_wrap(~CText, nrow = 1, scales = "free")+
   #ylab("Mean integrated squared error (MISE)")+
   ylab("Mean integrated squared error")+
   xlab("Exploration time (ST)")+
@@ -662,14 +661,13 @@ MISEBWmethod <- ggplot(avgData_methods, aes(x=ST, group=method))+
                                 "silverman" = "#228833"))+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face="bold",size=13),
+  theme(plot.title = element_text(face="bold",size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0),
-        legend.position = c(0.24, 0.7),
-        #legend.position = c(0.47, 0.88),
+        #legend.position = c(0.32, 0.72),
+        legend.position = c(0.29, 0.72),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -690,7 +688,7 @@ Lets look at the stability of these methods through the standard deviation of th
 ```{r}
 SISEBWmethod <- ggplot(avgData_methods, aes(x=ST, group=method))+
   geom_line(aes(y=sdMisePdf, color=method), size=1.2)+
-  facet_wrap(~CText, nrow = 1, scales = "fixed")+
+  facet_wrap(~CText, nrow = 1, scales = "free")+
   #ylab("Standard deviation of integrated squared error")+
   ylab("SD of integrated squared error")+
   xlab("Exploration time (ST)")+
@@ -701,14 +699,13 @@ SISEBWmethod <- ggplot(avgData_methods, aes(x=ST, group=method))+
                                 "silverman" = "#228833"))+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 3))+
-  theme(plot.margin = unit(c(0.5,0.1,0.1,0.5),"cm"),
-        plot.title = element_text(face="bold",size=13),
+  theme(plot.title = element_text(face="bold",size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0),
-        legend.position = c(0.24, 0.7),
-        #legend.position = c(0.47, 0.88),
+        #legend.position = c(0.32, 0.72),
+        legend.position = c(0.29, 0.72),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
