@@ -47,7 +47,9 @@ data <- data %>% mutate(aText = case_when(
                                 ))
 
 
-
+data <- data %>% mutate(exploitationTime = T-S_T,
+                        DataStratNrDecisionsPerExploitationTime = dataStratNrDecisions/exploitationTime,
+                        OptStratNrDecisionsPerTime = optNrDecisions/T)
 
 data$power <-  as.factor(data$power)
 data$pText <- paste0("Payoff power = ", data$power)
@@ -70,6 +72,8 @@ avgData <- data %>%
             seDataDecisions =std.error(dataStratNrDecisions),
             avgOptDecisions = mean(optNrDecisions),
             seOptDecisions = std.error(optNrDecisions),
+            avgDataDecisionsPerTime = mean(DataStratNrDecisionsPerExploitationTime),
+            avgOptDecisionsPerTime = mean(OptStratNrDecisionsPerTime),
             .groups = "drop")
 ```
 
@@ -174,6 +178,70 @@ fitDriftAndRewardData %>%
   add_header_above(c(" ", "Constant"=4, "Order"=4))
 ```
 
+### Plotting the fits
+
+```{r}
+As = unique(avgData$aText)
+Sigmas = unique(avgData$M1Text)
+powers = unique(avgData$pText)
+
+test3 <- data.frame()
+
+for(c in As){
+  for(p in powers){
+    for(z in Sigmas){
+      tmpData <- avgData %>% filter(M1Text == z & aText == c & pText == p)
+      m <- nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F, data = tmpData)
+      fitted_values <- fitted(m)
+      attributes(fitted_values)$label <- NULL
+      testNew <- data.frame(aText=c,
+                            pText=p,
+                            M1Text=z,
+                            T=seq(100, 5000, by=100),
+                            fittedVals = fitted_values) 
+
+      test3 <- rbind(test3, testNew)
+    }
+  }
+}
+
+fittedValuesDF <- merge(avgData, test3, by=c("aText", "pText", "T", "M1Text"))
+```
+
+```{r}
+#tmpData <- fittedValuesDF %>% filter(aText == "a_s = 1e-06")
+#tmpData <- fittedValuesDF %>% filter(aText == "a_s = 0.5a")
+#tmpData <- fittedValuesDF %>% filter(aText == "a_s = a")
+#tmpData <- fittedValuesDF %>% filter(aText == "a_s = 2a")
+tmpData <- fittedValuesDF %>% filter(pText == "Payoff power = 1")
+
+ggplot(tmpData, aes(x=T))+
+  geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
+  geom_line(aes(y=fittedVals, color="Fitted value"), size=1.2)+
+  scale_color_manual(values = c("Actual value" = "#66c2a5",
+                                "Fitted value"="#fc8d62"))+
+  ylab("Average cumulate regret")+
+  xlab("Time horizon (T)")+
+  ggtitle(TeX("\\textbf{Fitted average cumulative regret with $p=1$}"))+
+  facet_grid(aText ~ M1Text, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.23, 0.78),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
 
 
 
@@ -213,6 +281,43 @@ ggplot(tmpData, aes(x=T))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
+### Calculating fits
+
+```{r}
+fitDriftAndRewardData <- avgData %>%
+  filter(pText == "Payoff power = 1") %>% 
+  group_by(M1Text, aText) %>% 
+  summarise(
+  pow=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgST ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,4]<0.05,
+  c=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[2,1],
+  cSE = summary(nls(avgST ~ I(a*T^p), start=list(p=1,a=1), trace=F))$coefficients[2,2],
+  cSig = summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[2,4]<0.05,
+  .groups = "drop")
+
+fitDriftAndRewardData$pConf <- paste0(round(fitDriftAndRewardData$pow, 3), "±", round(2*fitDriftAndRewardData$powSE, 4))
+fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", round(2*fitDriftAndRewardData$cSE, 4))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL) %>% 
+  kable_classic() %>% 
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
+  kable_classic() %>% 
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
+```
+
 # Number of decisions
 
 ```{r}
@@ -245,6 +350,39 @@ ggplot(avgData, aes(x=T, group=aText))+
         legend.box.spacing = unit(0, "pt"),
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
+
+```{r}
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=avgDataDecisionsPerTime-avgOptDecisionsPerTime, color=aText), size=1.2)+
+  geom_hline(yintercept=0,linetype="dashed")+
+  ylab("Difference in number of decisions per time")+
+  xlab("Time horizon (T)")+
+  ggtitle("Diff. in number of decisions made per time unit by optimal and data-driven strategy")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.14, 0.01),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
 
 
 # Thresholds
