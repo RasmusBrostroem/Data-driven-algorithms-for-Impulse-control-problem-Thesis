@@ -36,6 +36,17 @@ data <- data %>% mutate(diffusionFunc = ifelse(diffusionCoef == "    return lamb
 thresholds <- thresholds %>% mutate(diffusionFunc = ifelse(diffusionCoef == "    return lambda x: 1/A if -A <= x and x <= A else (1/np.abs(x) if np.abs(x) < 100 else 1/100)\n", "sigma2", "sigma3"))
 ```
 
+```{r}
+data <- data %>% mutate(exploitationTime = T-S_T,
+                        DataStratNrDecisionsPerExploitationTime = dataStratNrDecisions/exploitationTime,
+                        OptStratNrDecisionsPerTime = optNrDecisions/T)
+
+diff1Data <- diff1Data %>% mutate(exploitationTime = T-S_T,
+                        DataStratNrDecisionsPerExploitationTime = dataStratNrDecisions/exploitationTime,
+                        OptStratNrDecisionsPerTime = optNrDecisions/T)
+```
+
+
 # Optimal threshold for the different diffusion coefficients
 
 ```{r}
@@ -63,6 +74,8 @@ avgdiff1Data <-  diff1Data %>%
             seDataDecisions =std.error(dataStratNrDecisions),
             avgOptDecisions = mean(optNrDecisions),
             seOptDecisions = std.error(optNrDecisions),
+            avgDataDecisionsPerTime = mean(DataStratNrDecisionsPerExploitationTime),
+            avgOptDecisionsPerTime = mean(OptStratNrDecisionsPerTime),
             diffusionFunc = "sigma1",
             .groups = "drop")
 
@@ -86,13 +99,15 @@ avgData <- data %>%
             seDataDecisions =std.error(dataStratNrDecisions),
             avgOptDecisions = mean(optNrDecisions),
             seOptDecisions = std.error(optNrDecisions),
+            avgDataDecisionsPerTime = mean(DataStratNrDecisionsPerExploitationTime),
+            avgOptDecisionsPerTime = mean(OptStratNrDecisionsPerTime),
             .groups = "drop")
 
 avgData <- rbind(avgData, avgdiff1Data)
 
 avgData$power = as.factor(avgData$power)
 avgData$pText = paste0("Payoff power = ", avgData$power)
-avgData$aText = paste0("Diffusion A = ", avgData$sigma_func_A)
+avgData$aText = paste0("A = ", avgData$sigma_func_A)
 ```
 
 ```{r}
@@ -113,7 +128,7 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
-        legend.justification= c(1, 0), 
+        legend.justification= c(1, 0),
         legend.position = c(0.07, 0.83),
         legend.key = element_blank(),
         legend.title = element_blank(),
@@ -236,7 +251,7 @@ fittedValuesDF <- merge(avgData, test3, by=c("sigma_func_A", "power", "T", "diff
 ```
 
 ```{r}
-tmpData <- fittedValuesDF %>% filter(diffusionFunc == "sigma3")
+tmpData <- fittedValuesDF %>% filter(diffusionFunc == "sigma2")
 
 ggplot(tmpData, aes(x=T))+
   geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
@@ -245,7 +260,7 @@ ggplot(tmpData, aes(x=T))+
                                 "Fitted value"="#fc8d62"))+
   ylab("Average cumulate regret")+
   xlab("Time horizon (T)")+
-  ggtitle(TeX("\\textbf{Fitted average cumulative regret for $\\sigma_3$}"))+
+  ggtitle(TeX("\\textbf{Fitted average cumulative regret for $\\sigma_2$}"))+
   facet_grid(pText ~ aText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -269,7 +284,7 @@ ggplot(tmpData, aes(x=T))+
 ## Exploration times
 
 ```{r}
-tmpData <- avgData %>% filter(diffusionFunc == "sigma2")
+tmpData <- avgData %>% filter(diffusionFunc == "sigma3")
 
 ggplot(tmpData, aes(x=T))+
   geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
@@ -278,7 +293,7 @@ ggplot(tmpData, aes(x=T))+
                                 "Target ST"="#fc8d62"))+
   ylab("Average exploration time (ST)")+
   xlab("Time horizon (T)")+
-  ggtitle(TeX("\\textbf{Average exploration time for $\\sigma_2$}"))+
+  ggtitle(TeX("\\textbf{Average exploration time for $\\sigma_3$}"))+
   facet_grid(pText ~ aText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -297,6 +312,43 @@ ggplot(tmpData, aes(x=T))+
         legend.spacing.y = unit(-5, "pt"),
         legend.box.spacing = unit(0, "pt"),
         legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+### Calculating fits for exploration data
+
+```{r}
+fitDriftAndRewardData <- avgData %>%
+  filter(diffusionFunc == "sigma3") %>% 
+  group_by(sigma_func_A, power) %>% 
+  summarise(
+  pow=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgST ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,4]<0.05,
+  c=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[2,1],
+  cSE = summary(nls(avgST ~ I(a*T^p), start=list(p=1,a=1), trace=F))$coefficients[2,2],
+  cSig = summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[2,4]<0.05,
+  .groups = "drop")
+
+fitDriftAndRewardData$pConf <- paste0(round(fitDriftAndRewardData$pow, 3), "±", round(2*fitDriftAndRewardData$powSE, 4))
+fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", round(2*fitDriftAndRewardData$cSE, 4))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = sigma_func_A, names_from = power, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 5), col.names = NULL) %>% 
+  kable_classic() %>% 
+  add_header_above(c("Diffusion A", rep(c("Payoff power = 1", "Payoff power = 5"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=2, "Order"=2))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = sigma_func_A, names_from = power, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 5), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
+  kable_classic() %>% 
+  add_header_above(c("Diffusion A", rep(c("Payoff power = 1", "Payoff power = 5"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=2, "Order"=2))
 ```
 
 ## Number of decisions
@@ -333,11 +385,44 @@ ggplot(avgData, aes(x=T, group=diffusionFunc))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
+```{r}
+ggplot(avgData, aes(x=T, group=diffusionFunc))+
+  geom_line(aes(y=avgDataDecisionsPerTime-avgOptDecisionsPerTime, color=diffusionFunc), size=1.2)+
+  geom_hline(yintercept=0,linetype="dashed")+
+  ylab("Difference per time in number of decisions")+
+  xlab("Time horizon (T)")+
+  ggtitle("Diff. in number of decisions made per time unit by optimal and data-driven strategy")+
+  scale_color_manual(values = c("sigma1" = "#66c2a5",
+                                "sigma2" = "#fc8d62",
+                                "sigma3" = "#8da0cb"),
+                     labels = c(TeX("$\\sigma_1$"), TeX("$\\sigma_2$"), TeX("$\\sigma_3$")))+
+  labs(color = "Drift Slope")+
+  facet_grid(pText ~ aText, scales="fixed")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.07, 0.01),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+
 # Thresholds
 
 ```{r}
 thresholds$pText = paste0("Payoff power = ", thresholds$power)
-thresholds$aText = paste0("Diffusion A = ", thresholds$sigma_func_A)
+thresholds$aText = paste0("A = ", thresholds$sigma_func_A)
 
 thresholds$diffusionFunc <- as.factor(thresholds$diffusionFunc)
 thresholds$aText <- as.factor(thresholds$aText)
@@ -425,7 +510,7 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
                                 "sigma3" = "#8da0cb"),
                      labels = c(TeX("$\\sigma_2$"), TeX("$\\sigma_3$")))+
   labs(color = "Drift Slope")+
-  facet_wrap(pText ~ aText, ncol=3, scales="free_y")+
+  facet_grid(pText ~ aText, scales="free_y")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -433,7 +518,7 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.29, 0.75),
+        legend.position = c(0.05, 0.9),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -479,7 +564,7 @@ ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.05, 0.91),
+        legend.position = c(0.05, 0.9),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
