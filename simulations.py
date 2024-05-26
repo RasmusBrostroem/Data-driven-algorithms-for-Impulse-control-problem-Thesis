@@ -82,7 +82,7 @@ def plot_reward_xi_obj(C, A, power, zeroVal, save_obj=False):
     y1, zeta = get_y1_and_zeta(g=rewardFunc)
     print(f"y1 = {y1} and zeta = {zeta}")
 
-    y = np.linspace(y1-0.00001, zeta*2, 100)
+    y = np.linspace(y1-0.00001, zeta, 100)
     gs = rewardFunc(y)
 
     bs = np.fromiter(map(driftFunc,y), dtype=float)
