@@ -773,7 +773,7 @@ ystart_text$cut_number <- "(179,433]"
 
 
 ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
-  geom_boxplot(aes(color=CText), outliers = T, outlier.size = 0.9)+
+  geom_boxplot(aes(color=CText), outliers = F, outlier.size = 0.9)+
   geom_hline(yintercept=0,linetype="dashed", alpha = 0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
@@ -809,7 +809,7 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
 DriftAndRewardThresholds <- thresholds %>% filter(zeroVal == 0.9)
 
 DriftAndRewardThresholds <- DriftAndRewardThresholds %>%
-  mutate(cut_number = cut_number(ST, n=5),
+  mutate(cut_number = cut_interval(ST, n=5),
          diffToOptimal = yhat-y_star) %>% 
   group_by(CText, cut_number, power) %>% 
   mutate(
