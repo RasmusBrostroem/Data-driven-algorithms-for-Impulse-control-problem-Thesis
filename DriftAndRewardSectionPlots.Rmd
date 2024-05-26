@@ -17,6 +17,7 @@ library(boot)
 library(plotrix)
 library(nlstools)
 library(kableExtra)
+library(latex2exp)
 ```
 
 ```{r}
@@ -31,6 +32,11 @@ data <- data %>% filter(power != "0.75")
 thresholds <- thresholds %>% filter(power != "0.75")
 ```
 
+```{r}
+data <- data %>% mutate(exploitationTime = T-S_T,
+                        DataStratNrDecisionsPerExploitationTime = dataStratNrDecisions/exploitationTime,
+                        OptStratNrDecisionsPerTime = optNrDecisions/T)
+```
 
 
 # All plots of average regret
@@ -47,6 +53,8 @@ avgData <- data %>%
             seDataDecisions =std.error(dataStratNrDecisions),
             avgOptDecisions = mean(optNrDecisions),
             seOptDecisions = std.error(optNrDecisions),
+            avgDataDecisionsPerTime = mean(DataStratNrDecisionsPerExploitationTime),
+            avgOptDecisionsPerTime = mean(OptStratNrDecisionsPerTime),
             .groups = "drop")
 
 avgData$C = as.factor(avgData$C)
@@ -60,14 +68,14 @@ avgData$pText = paste0("Payoff power = ", avgData$power)
 Average cumulative regret plot
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.99)
+tmpData <- avgData %>% filter(zeroVal == 0.9)
 
 ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=avgRegret, color=CText), size=1.2)+
   #geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Average cumulative regret")+
   xlab("Time horizon (T)")+
-  ggtitle("Average cumulative regret for drift and payoff functions (a=0.99)")+
+  ggtitle("Average cumulative regret for drift functions")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
@@ -96,13 +104,13 @@ ggplot(tmpData, aes(x=T, group=CText))+
 Variance of cumulative regret plot
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.99)
+tmpData <- avgData %>% filter(zeroVal == 0.9)
 
 ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=sdRegret, color=CText), size=1.2)+
   ylab("Standard deviation of cumulative regret")+
   xlab("Time horizon (T)")+
-  ggtitle("Standard deviation of cumulative regret for drift and payoff functions (a=0.99)")+
+  ggtitle("Standard deviation of cumulative regret for drift functions")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
@@ -115,7 +123,7 @@ ggplot(tmpData, aes(x=T, group=CText))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0),
-        legend.position = c(0.12, 0.73),
+        legend.position = c(0.31, 0.74),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -154,13 +162,13 @@ avgDataPerTime$pText = paste0("Payoff power = ", avgDataPerTime$power)
 Average cumulative regret plot
 
 ```{r}
-tmpData <- avgDataPerTime %>% filter(zeroVal == 0.99)
+tmpData <- avgDataPerTime %>% filter(zeroVal == 0.9)
 
 ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=avgRegret, color=CText), size=1.2)+
   ylab("Average cumulative regret per time unit")+
   xlab("Time horizon (T)")+
-  ggtitle("Average cumulative regret per time unit for drift and payoff functions (a=0.99)")+
+  ggtitle("Average cumulative regret per time unit for drift functions")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
@@ -188,13 +196,13 @@ ggplot(tmpData, aes(x=T, group=CText))+
 Variance of cumulative regret plot
 
 ```{r}
-tmpData <- avgDataPerTime %>% filter(zeroVal == 0.99)
+tmpData <- avgDataPerTime %>% filter(zeroVal == 0.9)
 
 ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=sdRegret, color=CText), size=1.2)+
   ylab("SD of cumulative regret per time unit")+
   xlab("Time horizon (T)")+
-  ggtitle("Standard deviation of cumulative regret per time unit (a=0.99)")+
+  ggtitle("Standard deviation of cumulative regret per time unit for drift functions")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
@@ -264,6 +272,29 @@ fitDriftAndRewardData %>%
   add_header_above(c("Reward power", rep(c("Drift slope = 0.1", "Drift slope = 0.5", "Drift slope = 4"), 1)))
 ```
 
+```{r}
+fitDriftAndRewardData <- avgData %>%
+  filter(zeroVal == 0.9) %>% 
+  group_by(C, power) %>% 
+  summarise(
+  pow=summary(nls(avgRegret ~ I(T^p), start=list(p=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgRegret ~ I(T^p),start=list(p=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgRegret~I(T^p),start=list(p=1), trace=F))$coefficients[1,4]<0.05,
+  .groups = "drop")
+
+fitDriftAndRewardData$pConf <- paste0(round(fitDriftAndRewardData$pow, 3), "±", round(2*fitDriftAndRewardData$powSE, 4))
+#fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", round(2*fitDriftAndRewardData$cSE, 4))
+
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = power, names_from = C, values_from = c(pConf)) %>%
+  kable(align = rep("c", 4), col.names = NULL) %>% 
+  kable_classic() %>% 
+  add_header_above(c("Reward power", "Drift slope = 0.1", "Drift slope = 0.5", "Drift slope = 4")) %>% 
+  add_header_above(c(" ", "Order"=3))
+```
+
+
+
 ## Plotting the fits to confirm that the fits are fine
 
 ```{r}
@@ -326,7 +357,7 @@ ggplot(fittedValuesDF, aes(x=T, group=CText))+
 ```
 
 ```{r}
-tmpData <- fittedValuesDF %>% filter(zeroVal == 0.7)
+tmpData <- fittedValuesDF %>% filter(zeroVal == 0.9)
 
 ggplot(tmpData, aes(x=T))+
   geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
@@ -335,7 +366,7 @@ ggplot(tmpData, aes(x=T))+
                                 "Fitted value"="#fc8d62"))+
   ylab("Average cumulate regret")+
   xlab("Time horizon (T)")+
-  ggtitle("Fitted average cumulative regret for drift and payoff functions with a=0.7")+
+  ggtitle("Fitted average cumulative regret for drift functions")+
   facet_grid(pText ~ CText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -344,7 +375,7 @@ ggplot(tmpData, aes(x=T))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.32, 0.94),
+        legend.position = c(0.32, 0.92),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -383,19 +414,81 @@ ggplot(avgData, aes(x=T, group=CText))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
+### Fits of exploration time
+
+```{r}
+fitDriftAndRewardData <- avgData %>%
+  filter(zeroVal == 0.9) %>% 
+  group_by(C, power) %>% 
+  summarise(
+  pow=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgST ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,4]<0.05,
+  c=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[2,1],
+  cSE = summary(nls(avgST ~ I(a*T^p), start=list(p=1,a=1), trace=F))$coefficients[2,2],
+  cSig = summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[2,4]<0.05,
+  .groups = "drop")
+
+fitDriftAndRewardData$pConf <- paste0(round(fitDriftAndRewardData$pow, 3), "±", round(2*fitDriftAndRewardData$powSE, 4))
+fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", round(2*fitDriftAndRewardData$cSE, 4))
+```
+
+```{r}
+fitDriftAndRewardData <- avgData %>%
+  filter(zeroVal == 0.9) %>% 
+  group_by(C, power) %>% 
+  summarise(
+  pow=summary(nls(avgST ~ I(T^p), start=list(p=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgST ~ I(T^p),start=list(p=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgST~I(T^p),start=list(p=1), trace=F))$coefficients[1,4]<0.05,
+  .groups = "drop")
+
+fitDriftAndRewardData$pConf <- paste0(round(fitDriftAndRewardData$pow, 3), "±", round(2*fitDriftAndRewardData$powSE, 4))
+#fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", round(2*fitDriftAndRewardData$cSE, 4))
+
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = power, names_from = C, values_from = c(pConf)) %>%
+  kable(align = rep("c", 4), col.names = NULL) %>% 
+  kable_classic() %>% 
+  add_header_above(c("Reward power", "Drift slope = 0.1", "Drift slope = 0.5", "Drift slope = 4")) %>% 
+  add_header_above(c(" ", "Order"=3))
+```
+
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = power, names_from = C, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 7), col.names = NULL) %>% 
+  kable_classic() %>% 
+  add_header_above(c("Reward power", rep(c("Drift slope = 0.1", "Drift slope = 0.5", "Drift slope = 4"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=3, "Order"=3))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = power, names_from = C, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 4), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
+  kable_classic() %>% 
+  add_header_above(c("Reward power", rep(c("Drift slope = 0.1", "Drift slope = 0.5", "Drift slope = 4"), 1)))
+```
+
+
+### Plots
 Individual plots
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.7)
+tmpData <- avgData %>% filter(zeroVal == 0.9)
 
 ggplot(tmpData, aes(x=T))+
   geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
   geom_line(aes(y=T^{2/3}, color="Target ST"), size=1.2)+
   scale_color_manual(values = c("Actual ST" = "#66c2a5",
-                                "Target ST"="#fc8d62"))+
-  ylab("Average exploration time (ST)")+
+                                "Target ST"="#fc8d62"),
+                     labels = c(TeX("Actual $S_T$"),
+                                TeX("Target $S_T$")))+
+  ylab(TeX("Average exploration time ( $S_T$)"))+
   xlab("Time horizon (T)")+
-  ggtitle("Average exploration time for drift and payoff functions with a=0.7")+
+  ggtitle("Average exploration time for drift functions")+
   facet_grid(pText ~ CText, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
@@ -404,7 +497,7 @@ ggplot(tmpData, aes(x=T))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.15, 0.93),
+        legend.position = c(0.15, 0.91),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -419,10 +512,10 @@ ggplot(tmpData, aes(x=T))+
 # Number of decisions
 
 ```{r}
-tmpData <- avgData %>% filter(zeroVal == 0.99)
+tmpData <- avgData %>% filter(zeroVal == 0.9)
 
 
-ggplot(avgData, aes(x=T, group=CText))+
+ggplot(tmpData, aes(x=T, group=CText))+
   geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=CText), size=1.2)+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Difference in number of decisions")+
@@ -432,15 +525,49 @@ ggplot(avgData, aes(x=T, group=CText))+
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
   labs(color = "Drift Slope")+
-  facet_grid(zeroValText~pText, scales="free")+
+  facet_wrap(~pText, nrow=1, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
-        legend.justification= c(1, 0), 
-        legend.position = c(0.32, 0.91),
+        legend.justification= c(1, 0),
+        legend.position = c(0.31, 0.74),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+```{r}
+tmpData <- avgData %>% filter(zeroVal == 0.9)
+
+
+ggplot(tmpData, aes(x=T, group=CText))+
+  geom_line(aes(y=avgDataDecisionsPerTime-avgOptDecisionsPerTime, color=CText), size=1.2)+
+  geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
+  ylab("Diff. per time in number of decisions")+
+  xlab("Time horizon (T)")+
+  ggtitle("Diff. in number of decisions made per time unit by optimal and data-driven strategy")+
+  scale_color_manual(values = c("C = 0.1" = "#66c2a5",
+                                "C = 0.5" = "#fc8d62",
+                                "C = 4" = "#8da0cb"))+
+  labs(color = "Drift Slope")+
+  facet_wrap(~pText, nrow=1, scales="fixed")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0),
+        legend.position = c(0.31, 0.74),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -494,7 +621,7 @@ ggplot(tmpData, aes(ST))+
 
 
 ```{r}
-DriftAndRewardThresholds <- thresholds %>% filter(zeroVal == 0.99)
+DriftAndRewardThresholds <- thresholds %>% filter(zeroVal == 0.9)
 
 DriftAndRewardThresholds <- DriftAndRewardThresholds %>%
   mutate(cut_number = cut_number(ST, n=5),
@@ -536,11 +663,11 @@ ystart_text$cut_number <- "(179,433]"
 
 
 ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
-  geom_boxplot(aes(color=CText),outliers = T, outlier.size =0.7)+
+  geom_boxplot(aes(color=CText),outliers = F, outlier.size =0.7)+
   geom_hline(yintercept=0,linetype="dashed", alpha = 0.9)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
-  ggtitle("Difference between estimated and optimal threshold for exploration intervals (a=0.99)")+
+  ggtitle("Difference between estimated and optimal threshold for exploration intervals")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
@@ -679,7 +806,7 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
 ## Better thresholds distribution
 
 ```{r}
-DriftAndRewardThresholds <- thresholds %>% filter(zeroVal == 0.99)
+DriftAndRewardThresholds <- thresholds %>% filter(zeroVal == 0.9)
 
 DriftAndRewardThresholds <- DriftAndRewardThresholds %>%
   mutate(cut_number = cut_number(ST, n=5),
@@ -725,7 +852,7 @@ ggplot(data=DriftAndRewardThresholds, aes(cut_number, diffToOptimal))+
   geom_hline(yintercept=0,linetype="dashed", alpha = 0.9)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
-  ggtitle("Difference between estimated and optimal threshold for exploration intervals (a=0.99)")+
+  ggtitle("Difference between estimated and optimal threshold over exploration intervals")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
@@ -763,7 +890,7 @@ ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
   geom_hline(yintercept=0,linetype="dashed", alpha = 0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
-  ggtitle("Difference between estimated and optimal threshold (a=0.99, Outliers)")+
+  ggtitle("Difference between estimated and optimal threshold over exploration intervals (Outliers)")+
   scale_color_manual(values = c("C = 0.1" = "#66c2a5",
                                 "C = 0.5" = "#fc8d62",
                                 "C = 4" = "#8da0cb"))+
