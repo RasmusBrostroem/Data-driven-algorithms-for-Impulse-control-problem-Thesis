@@ -18,6 +18,7 @@ library(plotrix)
 library(nlstools)
 library(kableExtra)
 library(latex2exp)
+library(ggh4x)
 ```
 
 ```{r}
@@ -41,8 +42,14 @@ unique(outliers$driftFuncPower)
 sumStatsOutliers <- outliers %>% group_by(driftFuncName, driftFuncPower) %>% 
   summarise(n = n(),
             meanRegret = mean(regret),
+            maxRegret = max(regret),
+            minRegret = min(regret),
             meanOptReward = mean(OptimalStratReward),
+            maxOptReward = max(OptimalStratReward),
+            minOptReward = min(OptimalStratReward),
             meanDataReward = mean(dataDriveReward),
+            maxDataReward = max(dataDriveReward),
+            minDataReward = min(dataDriveReward),
             meanOptDecisions = mean(optNrDecisions),
             meanDatadecisions = mean(dataStratNrDecisions))
 
@@ -52,6 +59,13 @@ sumStatsOutliers
 
 
 # Cumulative regret for non outliers
+
+```{r}
+non_outliers <- non_outliers %>% mutate(exploitationTime = T-S_T,
+                        DataStratNrDecisionsPerExploitationTime = dataStratNrDecisions/exploitationTime,
+                        OptStratNrDecisionsPerTime = optNrDecisions/T)
+```
+
 
 ```{r}
 avgData <- non_outliers %>%
@@ -65,6 +79,8 @@ avgData <- non_outliers %>%
             seDataDecisions =std.error(dataStratNrDecisions),
             avgOptDecisions = mean(optNrDecisions),
             seOptDecisions = std.error(optNrDecisions),
+            avgDataDecisionsPerTime = mean(DataStratNrDecisionsPerExploitationTime),
+            avgOptDecisionsPerTime = mean(OptStratNrDecisionsPerTime),
             .groups = "drop")
 
 
@@ -87,7 +103,7 @@ ggplot(avgData, aes(x=T, group=driftFuncName))+
                                 "b3" = "#8da0cb"),
                      labels=c(TeX("$b_1$"), TeX("$b_2$"), TeX("$b_3$")))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ driftpText, scales="free")+
+  facet_grid(pText ~ driftpText2, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -118,7 +134,7 @@ ggplot(avgData, aes(x=T, group=driftFuncName))+
                                 "b3" = "#8da0cb"),
                      labels=c(TeX("$b_1$"), TeX("$b_2$"), TeX("$b_3$")))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ driftpText, scales="free")+
+  ggh4x::facet_grid2(pText ~ driftpText2, scales="free_y", independent = "y")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -175,10 +191,71 @@ fitDriftAndRewardData %>%
   add_header_above(c(" ", "Constant"=2, "Order"=2))
 ```
 
+### Plotting the fits
+
+```{r}
+As = unique(avgData$driftFuncPower)
+Sigmas = unique(avgData$driftFuncName)
+powers = unique(avgData$power)
+
+test3 <- data.frame()
+
+for(c in As){
+  for(p in powers){
+    for(z in Sigmas){
+      tmpData <- avgData %>% filter(driftFuncName == z & driftFuncPower == c & power == p)
+      m <- nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F, data = tmpData)
+      fitted_values <- fitted(m)
+      attributes(fitted_values)$label <- NULL
+      testNew <- data.frame(driftFuncPower=c,
+                            power=p,
+                            driftFuncName=z,
+                            T=seq(100, 5000, by=100),
+                            fittedVals = fitted_values) 
+
+      test3 <- rbind(test3, testNew)
+    }
+  }
+}
+
+fittedValuesDF <- merge(avgData, test3, by=c("driftFuncPower", "power", "T", "driftFuncName"))
+```
+
+```{r}
+tmpData <- fittedValuesDF %>% filter(driftFuncPower == 13)
+
+ggplot(tmpData, aes(x=T))+
+  geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
+  geom_line(aes(y=fittedVals, color="Fitted value"), size=1.2)+
+  scale_color_manual(values = c("Actual value" = "#66c2a5",
+                                "Fitted value"="#fc8d62"))+
+  ylab("Average cumulate regret")+
+  xlab("Time horizon (T)")+
+  ggtitle("Fitted average cumulative regret for m=13")+
+  facet_grid(pText ~ driftFuncName, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.17, 0.88),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
 ## Exploration times
 
 ```{r}
-tmpData <- avgData %>% filter(driftFuncName == "b2")
+tmpData <- avgData %>% filter(driftpText2 == "m = 13")
 
 ggplot(tmpData, aes(x=T))+
   geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
@@ -187,8 +264,8 @@ ggplot(tmpData, aes(x=T))+
                                 "Target ST"="#fc8d62"))+
   ylab("Average exploration time (ST)")+
   xlab("Time horizon (T)")+
-  ggtitle(TeX("\\textbf{Average exploration time for $b_2$}"))+
-  facet_grid(pText ~ driftpText, scales="free")+
+  ggtitle("Average exploration time for m=13")+
+  facet_grid(pText ~ driftFuncName, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -208,21 +285,58 @@ ggplot(tmpData, aes(x=T))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
+### Calculating the fits
+
+```{r}
+fitDriftAndRewardData <- avgData %>%
+  filter(driftFuncPower == "13") %>% 
+  group_by(driftFuncName, power) %>% 
+  summarise(
+  pow=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
+  powSE=summary(nls(avgST ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
+  powSig=summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,4]<0.05,
+  c=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[2,1],
+  cSE = summary(nls(avgST ~ I(a*T^p), start=list(p=1,a=1), trace=F))$coefficients[2,2],
+  cSig = summary(nls(avgST~I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[2,4]<0.05,
+  .groups = "drop")
+
+fitDriftAndRewardData$pConf <- paste0(round(fitDriftAndRewardData$pow, 3), "±", round(2*fitDriftAndRewardData$powSE, 4))
+fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", round(2*fitDriftAndRewardData$cSE, 4))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = driftFuncName, names_from = power, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 5), col.names = NULL) %>% 
+  kable_classic() %>% 
+  add_header_above(c("Drift function", rep(c("Payoff power = 2", "Payoff power = 5"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=2, "Order"=2))
+```
+
+```{r}
+fitDriftAndRewardData %>% 
+  pivot_wider(id_cols = driftFuncName, names_from = power, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 5), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
+  kable_classic() %>% 
+  add_header_above(c("Drift function", rep(c("Payoff power = 1", "Payoff power = 5"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=2, "Order"=2))
+```
+
 ## Number of decisions
 
 ```{r}
 ggplot(avgData, aes(x=T, group=driftFuncName))+
-  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=driftFuncName), size=1.2)+
-  #geom_hline(yintercept=0,linetype="dashed")+
-  ylab("Difference in number of decisions")+
+  geom_line(aes(y=avgDataDecisionsPerTime-avgOptDecisionsPerTime, color=driftFuncName), size=1.2)+
+  geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
+  ylab("Difference per time in number of decisions")+
   xlab("Time horizon (T)")+
-  ggtitle("Difference in number of decisions made by optimal and data-driven")+
+  ggtitle("Diff. in number of decisions made per time unit by optimal and data-driven strategy")+
   scale_color_manual(values = c("b1" = "#66c2a5",
                                 "b2" = "#fc8d62",
                                 "b3" = "#8da0cb"),
                      labels=c(TeX("$b_1$"), TeX("$b_2$"), TeX("$b_3$")))+
   labs(color = "Drift Slope")+
-  facet_grid(pText ~ driftpText, scales="fixed")+
+  facet_grid(pText ~ driftpText2, scales="fixed")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -230,7 +344,7 @@ ggplot(avgData, aes(x=T, group=driftFuncName))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.08, 0.83),
+        legend.position = c(0.48, 0.83),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -263,7 +377,7 @@ ggplot(tmpData, aes(ST))+
   ylab("Number of estimates made")+
   xlab("Exporation time (ST)")+
   ggtitle("Number of estimates made at different exploration times")+
-  facet_grid(driftFuncName~driftpText, scales="fixed")+
+  facet_grid(driftFuncName~driftpText2, scales="fixed")+
   theme_bw()+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
