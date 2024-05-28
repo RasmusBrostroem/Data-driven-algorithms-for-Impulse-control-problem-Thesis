@@ -423,7 +423,7 @@ ggplot(tmp, aes(ST))+
 
 ```{r}
 thresholds <- thresholds %>%
-  mutate(cut_number = cut_interval(ST, n=5),
+  mutate(cut_number = cut_number(ST, n=5),
          diffToOptimal = yhat-y_star) %>% 
   group_by(pText, cut_number, ST_form, CText) %>% 
   mutate(
@@ -464,7 +464,7 @@ ystart_text$cut_number <- "(179,433]"
 
 
 ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
-  geom_boxplot(aes(color=ST_form), outliers = F, outlier.size = 0.7)+
+  geom_boxplot(aes(color=ST_form), outliers = F, outlier.size = 0.7, position = position_dodge2(preserve = "single"))+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
@@ -511,9 +511,9 @@ outliersData2 <- rbind(negativeOutliers, positiveOutliers)
 
 ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
   geom_boxplot(data=loweroutliersData, aes(color=ST_form),
-               outliers = T, outlier.size = 0.9)+
+               outliers = T, outlier.size = 0.9, position = position_dodge2(preserve = "single"))+
   geom_boxplot(data=upperoutliersData, aes(color=ST_form),
-               outliers = T, outlier.size = 0.9)+
+               outliers = T, outlier.size = 0.9, position = position_dodge2(preserve = "single"))+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
