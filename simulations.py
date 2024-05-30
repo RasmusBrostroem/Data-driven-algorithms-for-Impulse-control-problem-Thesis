@@ -346,8 +346,8 @@ def simulate_dataDriven_vs_optimal(Ts,
         "y_star": OptimalStrat.y_star,
         "y1": DataStrat.y1,
         "zeta": DataStrat.zeta,
-        "true_a": diffprocess.get_a_of_invariant_density(DataStrat.zeta),
-        "true_M1": diffprocess.get_M1_of_xi(DataStrat.y1, DataStrat.zeta),
+        "true_a": diffusionProcess.get_a_of_invariant_density(DataStrat.zeta),
+        "true_M1": diffusionProcess.get_M1_of_xi(DataStrat.y1, DataStrat.zeta),
         "sigma_func_A": sigma_func_A if sigma_func_A else "None"
     }
 
