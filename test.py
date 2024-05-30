@@ -145,7 +145,7 @@ def time_function(func, args_list, repetitions=10):
 # for st_form in ST_forms:
 #     print(st_form[1])
 
-
+plot_reward_xi_obj(4, 0, 5, 0.9)
 
 
 
