@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Callable, Union
 from scipy.integrate import quad, nquad, dblquad
+from scipy.optimize import minimize_scalar
 from functools import partial
 from collections.abc import Iterable
 import math
@@ -9,14 +10,23 @@ from mpmath import hyp2f2
 # Define the drift function and diffusion coefficient
 def drift(x: float) -> float:
     # return the drift function evaluated at x and t
-    return -x/2
+    return -2*x
 
 def generate_linear_drift(C: float, A: float = 0):
     return lambda x: -C*x
 
+def generate_non_linear_drift(C: float, power1: float, power2: float):
+    return lambda x: -C*x**power1 + x**power2
+
 def sigma(x: float) -> float:
     # return the diffusion coefficient evaluated at x and t
     return 1
+
+def sigma7(A):
+    return lambda x: 1/(A+np.exp(5*(x+A))) if x <= -A else (1/(A+np.exp(-5*(x-A))) if x >= A else 1/(A+1))
+
+def sigma4(A):
+    return lambda x: 1/A if -A <= x and x <= A else (1/np.abs(x) if np.abs(x) < 100 else 1/100)
 
 class DiffusionProcess():
     def __init__(self, b, sigma) -> None:
@@ -110,4 +120,15 @@ class DiffusionProcess():
         if isinstance(x, Iterable):
             return list(map(f, x))
         return f(x)
+    
+    def get_a_of_invariant_density(self, zeta):
+        eps = 0.0001
+        result = minimize_scalar(self.invariant_density, bounds=(0-eps, zeta+eps), method="bounded", options={'xatol': 1e-2})
+        return result.fun
+    
+    def get_M1_of_xi(self, y1, zeta):
+        eps = 0.0001
+        result = minimize_scalar(self.xi, bounds=(y1-eps, zeta+eps), method="bounded", options={'xatol': 1e-2})
+        return result.fun
+
 

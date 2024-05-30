@@ -1,11 +1,9 @@
 ---
-title: "ExplorationChanges"
+title: "aAndM1Plots"
 author: "Rasmus Brostrøm"
 date: "`r Sys.Date()`"
-output:
-  pdf_document: default
-  html_document: default
-editor_options:
+output: html_document
+editor_options: 
   chunk_output_type: console
 ---
 
@@ -19,6 +17,8 @@ library(boot)
 library(plotrix)
 library(nlstools)
 library(kableExtra)
+library(khroma)
+library(cowplot)
 library(latex2exp)
 library(ggh4x)
 ```
@@ -26,149 +26,116 @@ library(ggh4x)
 ```{r}
 setwd("C:/Projects/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
 #setwd("C:/Uni/Data-driven-algorithms-for-Impulse-control-problem-Thesis")
-data <- read.csv("./SimulationData/ExplorationData/ExplorationFormsStrategiesData.csv")
-thresholds <- read.csv("./SimulationData/ExplorationData/ExplorationFormsStrategiesThresholdData.csv")
+data <- read.csv("./SimulationData/aAndM1Data/aAndM1Data.csv")
+thresholds <- read.csv("./SimulationData/aAndM1Data/aAndM1ThresholdsData.csv")
 ```
 
 ```{r}
-data <- data %>% filter(ST_form != "T^(3/4)" & ST_form != "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")
+data <- data %>% mutate(new_a = a/true_a,
+                                new_M1 = M1/true_M1)
+
+data <- data %>% mutate(aText = case_when(
+                                        a == 0.0000010 ~ "a_s = 1e-06",
+                                        new_a == 0.5 ~ "a_s = 0.5a",
+                                        new_a == 1 ~ "a_s = a",
+                                        new_a == 2 ~ "a_s = 2a"),
+                                M1Text = case_when(
+                                        M1 == 0.0000010 ~ "Strat M1 = 1e-06",
+                                        new_M1 == 0.5 ~ "Strat M1 = 0.5M1",
+                                        new_M1 == 1 ~ "Strat M1 = M1",
+                                        new_M1 == 2 ~ "Strat M1 = 2M1"
+                                ))
+
 
 data <- data %>% mutate(exploitationTime = T-S_T,
                         DataStratNrDecisionsPerExploitationTime = dataStratNrDecisions/exploitationTime,
                         OptStratNrDecisionsPerTime = optNrDecisions/T)
-```
 
-```{r}
-thresholds <- thresholds %>% filter(ST_form != "T^(3/4)" & ST_form != "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")
-```
-
-
-
-# Exploration time
-In the algorithm it is given that the exploration time should be of the form:
-
-$$
-S_T = T^{2/3}
-$$
-
-to balance the regret from exploring and the regret from exploiting. We will now look at how changing the order of the exploration time affects the average regret. To do so we will look at 5 different exploration formulas, where each exploration formula is simulated 100 times for the time horizons $T\in \{100, 200, \dots, 5000\}$ with the four combinations of drift and payoff function given by the the linear drift function:
-
-$$
-b(x) = -Cx, \quad C\in \{0.5, 4\}
-$$
-
-and the payoff function:
-
-$$
-g(x) = 0.9-|1-x|^p, \quad p\in \{1, 5\}
-$$
-
-The exploration forms that we are looking at are:
-
-$$
-  S_T = 2\cdot(\sqrt{2\cdot\sqrt{T}+1} + \sqrt{T}+1)\\
-  S_T = T^{k}, \quad k\in \{1/4, \, 1/3, \, 1/2, \, 2/3\}
-$$
-
-
-```{r}
-avgData <- data %>% group_by(T, C, power, ST_form) %>% 
-                          summarise(avgRegret = mean(regret),
-                                    seRegret = std.error(regret),
-                                    varRegret = var(regret),
-                                    sdRegret = sd(regret),
-                                    avgST = mean(S_T),
-                                    seST = std.error(S_T),
-                                    avgDataDecisions = mean(dataStratNrDecisions),
-                                    seDataDecisions =std.error(dataStratNrDecisions),
-                                    avgOptDecisions = mean(optNrDecisions),
-                                    seOptDecisions = std.error(optNrDecisions),
-                                    avgDataDecisionsPerTime = mean(DataStratNrDecisionsPerExploitationTime),
-                                    avgOptDecisionsPerTime = mean(OptStratNrDecisionsPerTime),
-                                    .groups = "drop")
-
-avgData$C = as.factor(avgData$C)
-avgData$power = as.factor(avgData$power)
-avgData$ST_form = factor(avgData$ST_form, levels = c("T^(1/4)", "T^(1/3)", "T^(1/2)", "T^(2/3)"))
-avgData$CText = paste0("C = ", avgData$C)
-avgData$pText = paste0("Payoff power = ", avgData$power)
-```
-
-```{r}
-unique(avgData$ST_form)
+data$power <-  as.factor(data$power)
+data$pText <- paste0("Payoff power = ", data$power)
+data$M1Text <- factor(data$M1Text, levels = c("Strat M1 = 1e-06", "Strat M1 = 0.5M1", "Strat M1 = M1", "Strat M1 = 2M1"))
+data$aText <- factor(data$aText, levels = c("a_s = 1e-06", "a_s = 0.5a", "a_s = a", "a_s = 2a"))
 ```
 
 
+# Average data
 
 ```{r}
+avgData <- data %>%
+  group_by(T, pText, aText, M1Text) %>%
+  summarise(avgRegret = mean(regret),
+            sdRegret = sd(regret),
+            varRegret = var(regret),
+            avgST = mean(S_T),
+            seST = std.error(S_T),
+            avgDataDecisions = mean(dataStratNrDecisions),
+            seDataDecisions =std.error(dataStratNrDecisions),
+            avgOptDecisions = mean(optNrDecisions),
+            seOptDecisions = std.error(optNrDecisions),
+            avgDataDecisionsPerTime = mean(DataStratNrDecisionsPerExploitationTime),
+            avgOptDecisionsPerTime = mean(OptStratNrDecisionsPerTime),
+            .groups = "drop")
+```
 
-ggplot(avgData, aes(x=T, group=ST_form))+
-  geom_line(aes(y=avgRegret, color=ST_form), size=1.2)+
-  labs(title = "Average cumulative regret for different orders of exploration",
-       y = "Average cumulative regret",
-       x = "Time horizon (T)",
-       color = "Exploration order")+
-  ggh4x::facet_grid2(pText ~ CText, scales = "free_y", independent = "y")+
-  scale_color_manual(values = c("T^(1/4)" = "#4477AA",
-                                "T^(1/3)" = "#EE6677",
-                                "T^(1/2)" = "#228833",
-                                "T^(2/3)" = "#CCBB44"),
-                     labels = c(TeX("$S_T = T^{1/4}$"),
-                                TeX("$S_T = T^{1/3}$"),
-                                TeX("$S_T = T^{1/2}$"),
-                                TeX("$S_T = T^{2/3}$")))+
+
+```{r}
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=avgRegret, color=aText), size=1.2)+
+  ylab("Average cumulative regret")+
+  xlab("Time horizon (T)")+
+  ggtitle(TeX("\\textbf{Average cumulative regret using difference values of $a$ and $M_1$}"))+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
-  theme(plot.title = element_text(face="bold",size=13),
+  theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.15, 0.77),
+        legend.position = c(0.11, 0.79),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
         legend.margin = margin(0, 0, 0, 0),
         legend.key.spacing.x = unit(0, "pt"),
-        legend.key.spacing.y = unit(-3, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
         legend.spacing.y = unit(-5, "pt"),
         legend.box.spacing = unit(0, "pt"),
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
 
-Lets also look at the standard deviation of the regret to see how changing the exploration times affects the stability of the regret
-
 ```{r}
-ggplot(avgData, aes(x=T, group=ST_form))+
-  geom_line(aes(y=sdRegret, color=ST_form), size=1.2)+
-  labs(title = "Standard deviation of cumulative regret for different orders of exploration",
-       y = "Standard deviation of cumulative regret",
-       x = "Time horizon (T)",
-       color = "Exploration order")+
-  ggh4x::facet_grid2(pText ~ CText, scales = "free_y", independent = "y")+
-  scale_color_manual(values = c("T^(1/4)" = "#4477AA",
-                                "T^(1/3)" = "#EE6677",
-                                "T^(1/2)" = "#228833",
-                                "T^(2/3)" = "#CCBB44"),
-                     labels = c(TeX("$S_T = T^{1/4}$"),
-                                TeX("$S_T = T^{1/3}$"),
-                                TeX("$S_T = T^{1/2}$"),
-                                TeX("$S_T = T^{2/3}$")))+
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=sdRegret, color=aText), size=1.2)+
+  ylab("Standard deviation of cumulative regret")+
+  xlab("Time horizon (T)")+
+  ggtitle(TeX("\\textbf{Standard deviation of cumulative regret using difference values of $a$ and $M_1$}"))+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
   theme_bw()+
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
-  theme(plot.title = element_text(face="bold",size=13),
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.15, 0.77),
+        legend.position = c(0.11, 0.79),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
         legend.margin = margin(0, 0, 0, 0),
         legend.key.spacing.x = unit(0, "pt"),
-        legend.key.spacing.y = unit(-3, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
         legend.spacing.y = unit(-5, "pt"),
         legend.box.spacing = unit(0, "pt"),
         legend.background = element_rect(fill=alpha(0.0001)))
@@ -178,8 +145,8 @@ ggplot(avgData, aes(x=T, group=ST_form))+
 
 ```{r}
 fitDriftAndRewardData <- avgData %>%
-  filter(pText == "Payoff power = 5") %>% 
-  group_by(ST_form, CText) %>% 
+  filter(pText == "Payoff power = 1") %>% 
+  group_by(M1Text, aText) %>% 
   summarise(
   pow=summary(nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
   powSE=summary(nls(avgRegret ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
@@ -195,27 +162,27 @@ fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", r
 
 ```{r}
 fitDriftAndRewardData %>% 
-  pivot_wider(id_cols = ST_form, names_from = CText, values_from = c(cConf, pConf)) %>%
-  kable(align = rep("c", 5), col.names = NULL) %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL) %>% 
   kable_classic() %>% 
-  add_header_above(c("ST_form", rep(c("C = 0.5", "C = 4"), 2))) %>% 
-  add_header_above(c(" ", "Constant"=2, "Order"=2))
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
 ```
 
 ```{r}
 fitDriftAndRewardData %>% 
-  pivot_wider(id_cols = ST_form, names_from = CText, values_from = c(cConf, pConf)) %>%
-  kable(align = rep("c", 5), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
   kable_classic() %>% 
-  add_header_above(c("ST_form", rep(c("C = 0.5", "C = 4"), 2))) %>% 
-  add_header_above(c(" ", "Constant"=2, "Order"=2))
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
 ```
 
 ### Plotting the fits
 
 ```{r}
-As = unique(avgData$CText)
-Sigmas = unique(avgData$ST_form)
+As = unique(avgData$aText)
+Sigmas = unique(avgData$M1Text)
 powers = unique(avgData$pText)
 
 test3 <- data.frame()
@@ -223,13 +190,13 @@ test3 <- data.frame()
 for(c in As){
   for(p in powers){
     for(z in Sigmas){
-      tmpData <- avgData %>% filter(ST_form == z & CText == c & pText == p)
+      tmpData <- avgData %>% filter(M1Text == z & aText == c & pText == p)
       m <- nls(avgRegret ~ I(a*T^p), start=list(p=1, a=1), trace=F, data = tmpData)
       fitted_values <- fitted(m)
       attributes(fitted_values)$label <- NULL
-      testNew <- data.frame(CText=c,
+      testNew <- data.frame(aText=c,
                             pText=p,
-                            ST_form=z,
+                            M1Text=z,
                             T=seq(100, 5000, by=100),
                             fittedVals = fitted_values) 
 
@@ -238,7 +205,7 @@ for(c in As){
   }
 }
 
-fittedValuesDF <- merge(avgData, test3, by=c("CText", "pText", "T", "ST_form"))
+fittedValuesDF <- merge(avgData, test3, by=c("aText", "pText", "T", "M1Text"))
 ```
 
 ```{r}
@@ -246,7 +213,7 @@ fittedValuesDF <- merge(avgData, test3, by=c("CText", "pText", "T", "ST_form"))
 #tmpData <- fittedValuesDF %>% filter(aText == "a_s = 0.5a")
 #tmpData <- fittedValuesDF %>% filter(aText == "a_s = a")
 #tmpData <- fittedValuesDF %>% filter(aText == "a_s = 2a")
-tmpData <- fittedValuesDF %>% filter(pText == "Payoff power = 5")
+tmpData <- fittedValuesDF %>% filter(pText == "Payoff power = 1")
 
 ggplot(tmpData, aes(x=T))+
   geom_point(aes(y=avgRegret, color="Actual value"), size=1.7)+
@@ -255,8 +222,8 @@ ggplot(tmpData, aes(x=T))+
                                 "Fitted value"="#fc8d62"))+
   ylab("Average cumulate regret")+
   xlab("Time horizon (T)")+
-  ggtitle(TeX("\\textbf{Fitted average cumulative regret with $p=5$}"))+
-  ggh4x::facet_grid2(ST_form ~ CText, scales="free_y", independent = "y")+
+  ggtitle(TeX("\\textbf{Fitted average cumulative regret with $p=1$}"))+
+  facet_grid(aText ~ M1Text, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -264,7 +231,7 @@ ggplot(tmpData, aes(x=T))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.17, 0.76),
+        legend.position = c(0.23, 0.78),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -276,10 +243,15 @@ ggplot(tmpData, aes(x=T))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
+
+
 # Exploration times
 
 ```{r}
-tmpData <- avgData %>% filter(ST_form == "T^(2/3)")
+#tmpData <- avgData %>% filter(aText == "a_s = 1e-06")
+tmpData <- avgData %>% filter(aText == "a_s = 0.5a")
+#tmpData <- avgData %>% filter(aText == "a_s = a")
+#tmpData <- avgData %>% filter(aText == "a_s = 2a")
 
 ggplot(tmpData, aes(x=T))+
   geom_line(aes(y=avgST, color="Actual ST"), size=1.2)+
@@ -288,9 +260,8 @@ ggplot(tmpData, aes(x=T))+
                                 "Target ST"="#EE6677"))+
   ylab("Average exploration time (ST)")+
   xlab("Time horizon (T)")+
-  ggtitle(TeX("\\textbf{Average exploration time for $S_T = T^{2/3}$}"))+
-  #ggh4x::facet_grid2(pText ~ CText, scales="free_y", independent = "y")+
-  facet_grid(pText ~ CText, scales="fixed")+
+  ggtitle(TeX("\\textbf{Average exploration time for $\\sigma_2$}"))+
+  facet_grid(pText ~ M1Text, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -310,12 +281,12 @@ ggplot(tmpData, aes(x=T))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
-## Calculating fits
+### Calculating fits
 
 ```{r}
 fitDriftAndRewardData <- avgData %>%
   filter(pText == "Payoff power = 1") %>% 
-  group_by(ST_form, CText) %>% 
+  group_by(M1Text, aText) %>% 
   summarise(
   pow=summary(nls(avgST ~ I(a*T^p), start=list(p=1, a=1), trace=F))$coefficients[1,1],
   powSE=summary(nls(avgST ~ I(a*T^p),start=list(p=1,a=1), trace=F))$coefficients[1,2],
@@ -331,40 +302,36 @@ fitDriftAndRewardData$cConf <- paste0(round(fitDriftAndRewardData$c, 3), "±", r
 
 ```{r}
 fitDriftAndRewardData %>% 
-  pivot_wider(id_cols = ST_form, names_from = CText, values_from = c(cConf, pConf)) %>%
-  kable(align = rep("c", 5), col.names = NULL) %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL) %>% 
   kable_classic() %>% 
-  add_header_above(c("ST_form", rep(c("C = 0.5", "C = 4"), 2))) %>% 
-  add_header_above(c(" ", "Constant"=2, "Order"=2))
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
 ```
 
 ```{r}
 fitDriftAndRewardData %>% 
-  pivot_wider(id_cols = ST_form, names_from = CText, values_from = c(cConf, pConf)) %>%
-  kable(align = rep("c", 5), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
+  pivot_wider(id_cols = aText, names_from = M1Text, values_from = c(cConf, pConf)) %>%
+  kable(align = rep("c", 9), col.names = NULL, linesep="", longtable=FALSE, format="latex") %>% 
   kable_classic() %>% 
-  add_header_above(c("ST_form", rep(c("C = 0.5", "C = 4"), 2))) %>% 
-  add_header_above(c(" ", "Constant"=2, "Order"=2))
+  add_header_above(c("a_s", rep(c("M1_S = 1e-06", "M1_s = M1/2", "M1_s = M1", "M1_s = 2M1"), 2))) %>% 
+  add_header_above(c(" ", "Constant"=4, "Order"=4))
 ```
 
 # Number of decisions
 
 ```{r}
-ggplot(avgData, aes(x=T, group=ST_form))+
-  geom_line(aes(y=avgDataDecisionsPerTime-avgOptDecisionsPerTime, color=ST_form), size=1.2)+
-  geom_hline(yintercept=0,linetype="dashed")+
-  ylab("Difference in number of decisions per time")+
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=avgOptDecisions-avgDataDecisions, color=aText), size=1.2)+
+  ylab("Difference in number of decisions")+
   xlab("Time horizon (T)")+
-  ggtitle("Diff. in number of decisions made per time unit by optimal and data-driven strategy")+
-  scale_color_manual(values = c("T^(1/4)" = "#4477AA",
-                                "T^(1/3)" = "#EE6677",
-                                "T^(1/2)" = "#228833",
-                                "T^(2/3)" = "#CCBB44"),
-                     labels = c(TeX("$S_T = T^{1/4}$"),
-                                TeX("$S_T = T^{1/3}$"),
-                                TeX("$S_T = T^{1/2}$"),
-                                TeX("$S_T = T^{2/3}$")))+
-  facet_grid(pText ~ CText, scales="free")+
+  ggtitle("Difference in number of decisions made by optimal and data-driven strategy")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
@@ -372,7 +339,7 @@ ggplot(avgData, aes(x=T, group=ST_form))+
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
         legend.justification= c(1, 0), 
-        legend.position = c(0.14, 0.53),
+        legend.position = c(0.11, 0.79),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -384,14 +351,65 @@ ggplot(avgData, aes(x=T, group=ST_form))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
+```{r}
+ggplot(avgData, aes(x=T, group=aText))+
+  geom_line(aes(y=avgDataDecisionsPerTime-avgOptDecisionsPerTime, color=aText), size=1.2)+
+  geom_hline(yintercept=0,linetype="dashed")+
+  ylab("Difference in number of decisions per time")+
+  xlab("Time horizon (T)")+
+  ggtitle("Diff. in number of decisions made per time unit by optimal and data-driven strategy")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  facet_grid(pText ~ M1Text, scales="free")+
+  theme_bw()+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
+  theme(plot.title = element_text(face = "bold", size=13),
+        axis.title.x = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size=11),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.14, 0.01),
+        legend.key = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size=11),
+        legend.margin = margin(0, 0, 0, 0),
+        legend.key.spacing.x = unit(0, "pt"),
+        legend.key.spacing.y = unit(-6, "pt"),
+        legend.spacing.y = unit(-5, "pt"),
+        legend.box.spacing = unit(0, "pt"),
+        legend.background = element_rect(fill=alpha(0.0001)))
+```
+
+
+
 # Thresholds
 
 ```{r}
-thresholds$C = as.factor(thresholds$C)
-thresholds$power = as.factor(thresholds$power)
-thresholds$ST_form = factor(thresholds$ST_form, levels = c("T^(1/4)", "T^(1/3)", "T^(1/2)", "T^(2/3)"))
-thresholds$CText = paste0("C = ", thresholds$C)
-thresholds$pText = paste0("Payoff power = ", thresholds$power)
+thresholds <- thresholds %>% mutate(new_a = a/true_a,
+                                new_M1 = M1/true_M1)
+
+thresholds <- thresholds %>% mutate(aText = case_when(
+                                        a == 0.0000010 ~ "a_s = 1e-06",
+                                        new_a == 0.5 ~ "a_s = 0.5a",
+                                        new_a == 1 ~ "a_s = a",
+                                        new_a == 2 ~ "a_s = 2a"),
+                                M1Text = case_when(
+                                        M1 == 0.0000010 ~ "Strat M1 = 1e-06",
+                                        new_M1 == 0.5 ~ "Strat M1 = 0.5M1",
+                                        new_M1 == 1 ~ "Strat M1 = M1",
+                                        new_M1 == 2 ~ "Strat M1 = 2M1"
+                                ))
+
+
+
+
+thresholds$power <-  as.factor(thresholds$power)
+thresholds$pText <- paste0("Payoff power = ", thresholds$power)
+thresholds$M1Text <- factor(thresholds$M1Text, levels = c("Strat M1 = 1e-06", "Strat M1 = 0.5M1", "Strat M1 = M1", "Strat M1 = 2M1"))
+thresholds$aText <- factor(thresholds$aText, levels = c("a_s = 1e-06", "a_s = 0.5a", "a_s = a", "a_s = 2a"))
 ```
 
 ```{r}
@@ -402,7 +420,7 @@ ggplot(tmp, aes(ST))+
   ylab("Number of estimates made")+
   xlab("Exporation time (ST)")+
   ggtitle("Number of estimates made at different exploration times with T=5000")+
-  facet_grid(CText~ST_form, scales="fixed")+
+  facet_grid(M1Text~aText, scales="fixed")+
   theme_bw()+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
@@ -421,11 +439,12 @@ ggplot(tmp, aes(ST))+
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
 
+
 ```{r}
 thresholds <- thresholds %>%
   mutate(cut_number = cut_number(ST, n=5),
          diffToOptimal = yhat-y_star) %>% 
-  group_by(pText, cut_number, ST_form, CText) %>% 
+  group_by(pText, cut_number, aText, M1Text) %>% 
   mutate(
     upperlimit = boxplot.stats(diffToOptimal)$stats[c(1, 5)][2],
     lowerlimit = boxplot.stats(diffToOptimal)$stats[c(1, 5)][1]
@@ -439,7 +458,7 @@ thresholds <- thresholds %>%
 
 loweroutliers <- thresholds %>%
   filter(diffToOptimal < lowerlimit) %>% 
-  group_by(pText, cut_number, ST_form, CText) %>% 
+  group_by(pText, cut_number, aText, M1Text) %>% 
   summarise(n = n(),
             avgDiff = mean(diffToOptimal),
             .groups = "drop"
@@ -447,13 +466,13 @@ loweroutliers <- thresholds %>%
 
 upperoutliers <- thresholds %>%
   filter(diffToOptimal > upperlimit) %>% 
-  group_by(pText, cut_number, ST_form, CText) %>% 
+  group_by(pText, cut_number, aText, M1Text) %>% 
   summarise(n = n(),
             avgDiff = mean(diffToOptimal),
             .groups = "drop"
             )
 
-ystart_text <- thresholds %>% group_by(pText, cut_number, ST_form, CText) %>% 
+ystart_text <- thresholds %>% group_by(pText, cut_number, aText, M1Text) %>% 
   summarise(
     ystart_text = paste0("Opt. y = ", round(unique(y_star),2)),
     diffToOptimal = max(diffToOptimal),
@@ -464,28 +483,25 @@ ystart_text$cut_number <- "(179,433]"
 
 
 ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
-  geom_boxplot(aes(color=ST_form), outliers = F, outlier.size = 0.7, position = position_dodge2(preserve = "single"))+
+  geom_boxplot(aes(color=aText), outliers = F, outlier.size = 0.7)+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
-  ggtitle("Difference between estimated and optimal threshold for exploration orders")+
-  scale_color_manual(values = c("T^(1/4)" = "#4477AA",
-                                "T^(1/3)" = "#EE6677",
-                                "T^(1/2)" = "#228833",
-                                "T^(2/3)" = "#CCBB44"),
-                     labels = c(TeX("$S_T = T^{1/4}$"),
-                                TeX("$S_T = T^{1/3}$"),
-                                TeX("$S_T = T^{1/2}$"),
-                                TeX("$S_T = T^{2/3}$")))+
-  ggh4x::facet_grid2(pText ~ CText, scales="free_y", independent = "y")+
+  ggtitle("Difference between estimated and optimal threshold for values of a and M1")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  ggh4x::facet_grid2(M1Text ~ pText, scales="free_y", independent = "y")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 4))+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
-        legend.justification= c(1, 1), 
-        legend.position = c(0.98, 0.98),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.98, 0.145),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -496,7 +512,6 @@ ggplot(data=thresholds, aes(cut_number, diffToOptimal))+
         legend.box.spacing = unit(0, "pt"),
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
-
 
 ```{r}
 loweroutliersData <- thresholds %>% filter(isLowerOutlier == TRUE)
@@ -510,31 +525,28 @@ positiveOutliers <- thresholds %>% filter(isOutlier == TRUE & diffToOptimal > 0)
 outliersData2 <- rbind(negativeOutliers, positiveOutliers)
 
 ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
-  geom_boxplot(data=loweroutliersData, aes(color=ST_form),
-               outliers = T, outlier.size = 0.9, position = position_dodge2(preserve = "single"))+
-  geom_boxplot(data=upperoutliersData, aes(color=ST_form),
-               outliers = T, outlier.size = 0.9, position = position_dodge2(preserve = "single"))+
+  geom_boxplot(data=loweroutliersData, aes(color=aText),
+               outliers = T, outlier.size = 0.9)+
+  geom_boxplot(data=upperoutliersData, aes(color=aText),
+               outliers = T, outlier.size = 0.9)+
   geom_hline(yintercept=0,linetype="dashed", alpha=0.5)+
   ylab("Estimated threshold - Optimal threshold")+
   xlab("Exploration time interval")+
-  ggtitle("Difference between estimated and optimal threshold for exploration orders (outliers)")+
-  scale_color_manual(values = c("T^(1/4)" = "#4477AA",
-                                "T^(1/3)" = "#EE6677",
-                                "T^(1/2)" = "#228833",
-                                "T^(2/3)" = "#CCBB44"),
-                     labels = c(TeX("$S_T = T^{1/4}$"),
-                                TeX("$S_T = T^{1/3}$"),
-                                TeX("$S_T = T^{1/2}$"),
-                                TeX("$S_T = T^{2/3}$")))+
-  ggh4x::facet_grid2(pText ~ CText, scales="free_y", independent = "y")+
+  ggtitle("Difference between estimated and optimal threshold for values of a and M1 (Outliers)")+
+  scale_color_manual(values = c("a_s = 1e-06" = "#4477AA",
+                                "a_s = 0.5a" = "#EE6677",
+                                "a_s = a" = "#228833",
+                                "a_s = 2a" = "#CCBB44"),
+                     labels=c(TeX("$a_s = 1e-06$"), TeX("$a_s = 0.5a$"), TeX("$a_s = a$"), TeX("$a_s = 2a$")))+
+  ggh4x::facet_grid2(M1Text ~ pText, scales="free_y", independent = "y")+
   theme_bw()+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5))+
   theme(plot.title = element_text(face = "bold", size=13),
         axis.title.x = element_text(size=12),
         axis.title.y = element_text(size=12),
         strip.text = element_text(size=11),
-        legend.justification= c(1, 1), 
-        legend.position = c(0.98, 0.98),
+        legend.justification= c(1, 0), 
+        legend.position = c(0.98, 0.145),
         legend.key = element_blank(),
         legend.title = element_blank(),
         legend.text = element_text(size=11),
@@ -545,57 +557,4 @@ ggplot(data=outliersData, aes(cut_number, diffToOptimal))+
         legend.box.spacing = unit(0, "pt"),
         legend.background = element_rect(fill=alpha(0.0001)))
 ```
-
-
-
-## Lets confirm that the exploration times actually fit the corresponding exploration forms:
-
-```{r}
-avgExplorationTime <- ExplorationFormsData %>% group_by(T, ST_form) %>% 
-  summarise(avgST = mean(S_T),
-            .groups = "drop")
-
-avgExplorationTime %>% filter(ST_form == "2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)") %>% 
-  ggplot(aes(x=T))+
-  geom_line(aes(y=avgST))+
-  geom_line(aes(y=2*(sqrt(2*sqrt(T)+1)+sqrt(T)+1), color="red"))+
-  ylab("Average exploration time")+
-  ggtitle("Average exploration time for 2*(sqrt(2*sqrt(T)+1) + sqrt(T) + 1)")+
-  theme(legend.position="none")
-
-avgExplorationTime %>% filter(ST_form == "T^(1/4)") %>% 
-  ggplot(aes(x=T))+
-  geom_line(aes(y=avgST))+
-  geom_line(aes(y=T^(1/4), color="red"))+
-  ylab("Average exploration time")+
-  ggtitle("Average exploration time for T^(1/4)")+
-  theme(legend.position="none")
-
-avgExplorationTime %>% filter(ST_form == "T^(1/3)") %>% 
-  ggplot(aes(x=T))+
-  geom_line(aes(y=avgST))+
-  geom_line(aes(y=T^(1/3), color="red"))+
-  ylab("Average exploration time")+
-  ggtitle("Average exploration time for T^(1/3)")+
-  theme(legend.position="none")
-
-avgExplorationTime %>% filter(ST_form == "T^(1/2)") %>% 
-  ggplot(aes(x=T))+
-  geom_line(aes(y=avgST))+
-  geom_line(aes(y=T^(1/2), color="red"))+
-  ylab("Average exploration time")+
-  ggtitle("Average exploration time for T^(1/2)")+
-  theme(legend.position="none")
-
-avgExplorationTime %>% filter(ST_form == "T^(2/3)") %>% 
-  ggplot(aes(x=T))+
-  geom_line(aes(y=avgST))+
-  geom_line(aes(y=T^(2/3), color="red"))+
-  ylab("Average exploration time")+
-  ggtitle("Average exploration time for T^(2/3)")+
-  theme(legend.position="none")
-```
-
-
-
 
