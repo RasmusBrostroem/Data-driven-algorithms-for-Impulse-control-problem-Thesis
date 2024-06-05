@@ -64,6 +64,13 @@ def time_function(func, args_list, repetitions=10):
 #             thresholds.append(threshold)
 #             thresholds_t.append(t)
 
+#powers = [1, 5]
+# zeroVals = [0.9]
+# Cs = [0.5, 4]
+# As = [0]
+# exploration_percentages = [0, 0.1, 0.25, 0.50]
+# argList = list(product(Cs, As, powers, zeroVals, exploration_percentages))[4:]
+# print(argList)
 #         if exploring:
 #             data.append(X)
 #             S_t += dt
@@ -145,7 +152,7 @@ def time_function(func, args_list, repetitions=10):
 # for st_form in ST_forms:
 #     print(st_form[1])
 
-
+plot_reward_xi_obj(4, 0, 5, 0.9)
 
 
 

@@ -82,7 +82,7 @@ def plot_reward_xi_obj(C, A, power, zeroVal, save_obj=False):
     y1, zeta = get_y1_and_zeta(g=rewardFunc)
     print(f"y1 = {y1} and zeta = {zeta}")
 
-    y = np.linspace(y1-0.00001, zeta*2, 100)
+    y = np.linspace(y1-0.00001, zeta, 100)
     gs = rewardFunc(y)
 
     bs = np.fromiter(map(driftFunc,y), dtype=float)
@@ -346,6 +346,8 @@ def simulate_dataDriven_vs_optimal(Ts,
         "y_star": OptimalStrat.y_star,
         "y1": DataStrat.y1,
         "zeta": DataStrat.zeta,
+        "true_a": diffusionProcess.get_a_of_invariant_density(DataStrat.zeta),
+        "true_M1": diffusionProcess.get_M1_of_xi(DataStrat.y1, DataStrat.zeta),
         "sigma_func_A": sigma_func_A if sigma_func_A else "None"
     }
 
@@ -386,7 +388,106 @@ def simulate_dataDriven_vs_optimal(Ts,
     
     run.stop()
 
+def simulate_dataDriven_vs_optimal_using_exploitation_data(Ts,
+                                                           sims,
+                                                           C,
+                                                           A,
+                                                           power,
+                                                           zeroVal,
+                                                           a=0.000001,
+                                                           M1=0.000001,
+                                                           ST_form_and_text=(lambda t: t**(2/3), "T^(2/3)"),
+                                                           kernel_method="gaussian",
+                                                           bandwidth_func = lambda t: 1/np.sqrt(t),
+                                                           p_of_exploitation_data = 0.1,
+                                                           neptune_tags=["StrategyVsOptimal"]):
+    
+    driftFunc = generate_linear_drift(C, A)
+    rewardFunc = generate_reward_func(power, zeroVal)
+    sigmaFunc = sigma
+    run = neptune.init_run(project='rasmusbrostroem/DiffusionControl', tags=neptune_tags)
+    runId = run["sys/id"].fetch()
+    diffusionProcess = DiffusionProcess(b=driftFunc, sigma=sigmaFunc)
+    OptimalStrat = OptimalStrategy(diffusionProcess=diffusionProcess, rewardFunc=rewardFunc)
+    DataStrat = DataDrivenImpulseControl(rewardFunc=rewardFunc, sigma=sigmaFunc)
+    DataStrat.a = a
+    DataStrat.M1 = M1
+    DataStrat.kernel_method = kernel_method
+    DataStrat.bandwidthFunc = bandwidth_func
+    DataStrat.ST_form = ST_form_and_text[0]
 
+    run["AlgoParams"] = {
+        "kernelMethod": DataStrat.kernel_method,
+        "bandwidthMethod": inspect.getsource(bandwidth_func),
+        "a": DataStrat.a,
+        "M1": DataStrat.M1,
+        "ST_form": ST_form_and_text[1],
+        "Exploitation_data_percentage": p_of_exploitation_data
+    }
+
+    run["ModelParams"] = {
+        "driftFunc": inspect.getsource(diffusionProcess.b),
+        "C": C,
+        "A": A,
+        "diffusionCoef": inspect.getsource(diffusionProcess.sigma),
+        "rewardFunc": inspect.getsource(DataStrat.g),
+        "power": power,
+        "zeroVal": zeroVal,
+        "y_star": OptimalStrat.y_star,
+        "y1": DataStrat.y1,
+        "zeta": DataStrat.zeta
+    }
+
+    for s in range(sims):
+        run[f"Metrics/Sim{s}/T"].extend(values=Ts)
+        run[f"Metrics/Sim{s}/simNr"].extend(values=[s for _ in Ts])
+        S_Ts = []
+        dataRewards = []
+        dataNrDecisionsList = []
+        optRewards = []
+        optNrdecisionsList = []
+        regrets = []
+        MISE_pdf_list = []
+        MISE_cdf_list = []
+        for T in Ts:
+            diffusionProcess.generate_noise(T, 0.01)
+            strategyData = DataStrat.simulate_using_exploitation_data(diffpros=diffusionProcess, T=T, dt=0.01, p_of_exploitation=p_of_exploitation_data)
+            dataReward = strategyData[0]
+            S_T = strategyData[1]
+            thresholds_and_Sts = strategyData[2]
+            DataStratNrDecisions = strategyData[3]
+            MISE_pdf = strategyData[4]
+            MISE_cdf = strategyData[5]
+
+            if len(thresholds_and_Sts) >= 1:
+                thresholds, Sts = zip(*thresholds_and_Sts)
+                if len(thresholds) == 1:
+                    run[f"Metrics/Sim{s}/Thresholds/{T}"].append(value=thresholds[0], step=Sts[0])
+                else:
+                    run[f"Metrics/Sim{s}/Thresholds/{T}"].extend(values=thresholds, steps=Sts)
+
+            opt_reward, optNrDecisions = OptimalStrat.simulate(diffpros=diffusionProcess, T=T, dt=0.01)
+
+            S_Ts.append(S_T)
+            dataRewards.append(dataReward)
+            dataNrDecisionsList.append(DataStratNrDecisions)
+            optRewards.append(opt_reward)
+            optNrdecisionsList.append(optNrDecisions)
+            regrets.append(opt_reward-dataReward)
+            
+            MISE_pdf_list.append(MISE_pdf) if MISE_pdf else MISE_pdf_list.append(-1)
+            MISE_cdf_list.append(MISE_cdf) if MISE_cdf else MISE_cdf_list.append(-1)
+        
+        run[f"Metrics/Sim{s}/S_T"].extend(values=S_Ts, steps=Ts)
+        run[f"Metrics/Sim{s}/dataDriveReward"].extend(values=dataRewards, steps=Ts)
+        run[f"Metrics/Sim{s}/OptimalStratReward"].extend(values=optRewards, steps=Ts)
+        run[f"Metrics/Sim{s}/regret"].extend(values=regrets, steps=Ts)
+        run[f"Metrics/Sim{s}/optNrDecisions"].extend(values=optNrdecisionsList, steps=Ts)
+        run[f"Metrics/Sim{s}/dataStratNrDecisions"].extend(values=dataNrDecisionsList, steps=Ts)
+        run[f"Metrics/Sim{s}/MISE_pdf"].extend(values=MISE_pdf_list, steps=Ts)
+        run[f"Metrics/Sim{s}/MISE_cdf"].extend(values=MISE_cdf_list, steps=Ts)
+
+    run.stop()
 
 
 if __name__ == "__main__":
@@ -492,7 +593,26 @@ if __name__ == "__main__":
     #                                                            ST_form_and_text=st_form,
     #                                                            neptune_tags=["Fixed Exploration Forms", "DataDrivenVsOptimal"]) for C, p, st_form in argList)
 
-    ### Simulating different diffusion coefficients
+    ### Simulate using exploitation data
+    Ts = [100*i for i in range(1,51)]
+    sims = 100
+    powers = [1, 5]
+    zeroVals = [0.9]
+    Cs = [0.5, 4]
+    As = [0]
+    exploration_percentages = [0, 0.1, 0.25, 0.50]
+    argList = list(product(Cs, As, powers, zeroVals, exploration_percentages))[4:]
+
+    Parallel(n_jobs=8)(delayed(simulate_dataDriven_vs_optimal_using_exploitation_data)(Ts=Ts,
+                                                                                       sims=sims,
+                                                                                       C=C,
+                                                                                       A=A,
+                                                                                       power=p,
+                                                                                       zeroVal=z,
+                                                                                       p_of_exploitation_data=exploi_percent,
+                                                                                       neptune_tags=["DataStratUsingExploitationData"]) for 
+                                                                                                        C, A, p, z, exploi_percent in argList)
+    # ### Simulating different diffusion coefficients
     # Ts = [100*i for i in range(1,51)]
     # sims = 100
     # Cs = [1/2]
@@ -512,10 +632,10 @@ if __name__ == "__main__":
     #                                                            sigma_func_A=sigmaA,
     #                                                            neptune_tags=["Diffucions Coeffient"]) for C, p, sigmaA, sigmafunc in argList)
 
-    ### Simulating misspecification
-    Ts = [100*i for i in range(1,51)]
-    sims = 100
-    powers = [2, 5]
+    # ### Simulating misspecification
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # powers = [2, 5]
     def b1(power: float):
         return lambda x: -x**power
     # def b2(power: float):
@@ -537,4 +657,54 @@ if __name__ == "__main__":
                                                                zeroVal=0.7,
                                                                driftFuncAndPower=driftAndPower,
                                                                neptune_tags=["Misspecification", "IncreasingPower"]) for p, driftAndPower in argList)
+    
+
+    ### Simulating different values of a and M1
+    # b = generate_linear_drift(1/2)
+    # g = generate_reward_func(1, 0.9)
+    # y1, zeta = get_y1_and_zeta(g)
+    # diffprocess = DiffusionProcess(b, sigma)
+    # true_a = diffprocess.get_a_of_invariant_density(zeta)
+    # true_M1 = diffprocess.get_M1_of_xi(y1, zeta)
+
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # a_values = [0.000001, true_a/2, true_a, 2*true_a]
+    # M1_values = [0.000001, true_M1/2, true_M1, 2*true_M1]
+
+    # argList = list(product(a_values, M1_values))
+
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=1/2,
+    #                                                            A=0,
+    #                                                            power=1,
+    #                                                            zeroVal=0.9,
+    #                                                            a=a_val,
+    #                                                            M1=M1_val,
+    #                                                            neptune_tags=["aAndM1Values"]) for a_val, M1_val in argList)
+    
+    # b = generate_linear_drift(1/2)
+    # g = generate_reward_func(5, 0.9)
+    # y1, zeta = get_y1_and_zeta(g)
+    # diffprocess = DiffusionProcess(b, sigma)
+    # true_a = diffprocess.get_a_of_invariant_density(zeta)
+    # true_M1 = diffprocess.get_M1_of_xi(y1, zeta)
+
+    # Ts = [100*i for i in range(1,51)]
+    # sims = 100
+    # a_values = [0.000001, true_a/2, true_a, 2*true_a]
+    # M1_values = [0.000001, true_M1/2, true_M1, 2*true_M1]
+
+    # argList = list(product(a_values, M1_values))
+
+    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+    #                                                            sims=sims,
+    #                                                            C=1/2,
+    #                                                            A=0,
+    #                                                            power=5,
+    #                                                            zeroVal=0.9,
+    #                                                            a=a_val,
+    #                                                            M1=M1_val,
+    #                                                            neptune_tags=["aAndM1Values"]) for a_val, M1_val in argList)
     
