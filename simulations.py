@@ -636,25 +636,28 @@ if __name__ == "__main__":
     # Ts = [100*i for i in range(1,51)]
     # sims = 100
     # powers = [2, 5]
-    # def b1(power: float):
-    #     return lambda x: -x**power
+    def b1(power: float):
+        return lambda x: -x**power
     # def b2(power: float):
     #     return lambda x: -x**power + x**2+x
     # def b3(power: float):
     #     return lambda x: -x**power + x
     
-    # driftPowers = [3, 13]
-    # driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
+    #driftPowers = [3, 13]
+    #driftsAndPowers = [(b1(p), p, "b1") for p in driftPowers] + [(b2(p), p, "b2") for p in driftPowers] + [(b3(p), p, "b3") for p in driftPowers]
+    driftPowers = [3, 5, 7, 9, 11]
+    driftsAndPowers = [(b1(p), p, "b4") for p in driftPowers]
+
+    argList = list(product(powers, driftsAndPowers))
+    Parallel(n_jobs=5)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
+                                                               sims=sims,
+                                                               C=0,
+                                                               A=0,
+                                                               power=p,
+                                                               zeroVal=0.7,
+                                                               driftFuncAndPower=driftAndPower,
+                                                               neptune_tags=["Misspecification", "IncreasingPower"]) for p, driftAndPower in argList)
     
-    # argList = list(product(powers, driftsAndPowers))
-    # Parallel(n_jobs=6)(delayed(simulate_dataDriven_vs_optimal)(Ts=Ts,
-    #                                                            sims=sims,
-    #                                                            C=0,
-    #                                                            A=0,
-    #                                                            power=p,
-    #                                                            zeroVal=0.7,
-    #                                                            driftFuncAndPower=driftAndPower,
-    #                                                            neptune_tags=["Misspecification"]) for p, driftAndPower in argList)
 
     ### Simulating different values of a and M1
     # b = generate_linear_drift(1/2)
